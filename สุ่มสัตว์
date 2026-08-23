@@ -1,0 +1,22 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local ALLOWED_USER = "HGVGGGG61"
+
+-- 🔒 ตรวจสอบสิทธิ์ฝั่ง Client ล้วน (LocalPlayer Only) -- [แก้ไข: ตัดโครงสร้าง Server-Side ออกทั้งหมด]
+if LocalPlayer then
+    if LocalPlayer.Name == ALLOWED_USER then
+        -- 🚀 หากเป็น HGVGGGG61 ให้โหลดและรันสคริปต์หลักจาก Pastefy
+        local success, scriptContent = pcall(function()
+            return game:HttpGet("https://pastefy.app/MMC1mffC/raw")
+        end)
+        
+        if success and scriptContent then
+            loadstring(scriptContent)()
+        else
+            warn("⚠️ ไม่สามารถดึงข้อมูลจาก Pastefy ได้!")
+        end
+    else
+        -- ⛔ หากไม่ใช่ HGVGGGG61 ให้เตะผู้รันออกทันที -- [แก้ไข: สั่ง Kick ที่ตัวผู้ใช้โดยตรง]
+        LocalPlayer:Kick("คุณไม่ได้รับอนุญาต")
+    end
+end
