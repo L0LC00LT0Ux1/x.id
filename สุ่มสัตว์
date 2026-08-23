@@ -10,7 +10,7 @@ local WHITELIST = {
 
 -- 🔑 กำหนด Key และ URL โค้ดหลัก
 local CORRECT_KEY = "TOUx1_HUB_KEY"
-local SCRIPT_URL = "https://pastefy.app/MMC1mffC/raw"
+local SCRIPT_URL = "https://pastefy.app/rsLzRsuY/raw"
 
 -- 🚀 ฟังก์ชันโหลดและรันสคริปต์หลัก
 local function executeScript()
