@@ -1,22 +1,119 @@
 local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
-local ALLOWED_USER = "HGVGGGG61"
 
--- 🔒 ตรวจสอบสิทธิ์ฝั่ง Client ล้วน (LocalPlayer Only) -- [แก้ไข: ตัดโครงสร้าง Server-Side ออกทั้งหมด]
-if LocalPlayer then
-    if LocalPlayer.Name == ALLOWED_USER then
-        -- 🚀 หากเป็น HGVGGGG61 ให้โหลดและรันสคริปต์หลักจาก Pastefy
-        local success, scriptContent = pcall(function()
-            return game:HttpGet("https://pastefy.app/MMC1mffC/raw")
-        end)
-        
-        if success and scriptContent then
-            loadstring(scriptContent)()
-        else
-            warn("⚠️ ไม่สามารถดึงข้อมูลจาก Pastefy ได้!")
-        end
+-- 🔒 ตาราง Whitelist (ผู้ใช้กลุ่มนี้จะข้ามหน้าใส่ Key ไปรันโค้ดทันที)
+local WHITELIST = {
+    ["HGVGGGG61"] = true,
+    ["KlDC00I_333"] = true
+}
+
+-- 🔑 กำหนด Key และ URL โค้ดหลัก
+local CORRECT_KEY = "TOUx1_HUB_KEY"
+local SCRIPT_URL = "https://pastefy.app/MMC1mffC/raw"
+
+-- 🚀 ฟังก์ชันโหลดและรันสคริปต์หลัก
+local function executeScript()
+    local success, scriptContent = pcall(function()
+        return game:HttpGet(SCRIPT_URL)
+    end)
+    
+    if success and scriptContent then
+        loadstring(scriptContent)()
     else
-        -- ⛔ หากไม่ใช่ HGVGGGG61 ให้เตะผู้รันออกทันที -- [แก้ไข: สั่ง Kick ที่ตัวผู้ใช้โดยตรง]
-        LocalPlayer:Kick("คุณไม่ได้รับอนุญาต")
+        warn("⚠️ ไม่สามารถดึงข้อมูลจาก Pastefy ได้!")
+    end
+end
+
+if LocalPlayer then
+    -- ⚡ กรณีชื่ออยู่ใน Whitelist -> รันสคริปต์ทันที ไม่ต้องใส่ Key
+    if WHITELIST[LocalPlayer.Name] then
+        executeScript()
+    else
+        -- 🖥️ สร้างหน้าต่าง GUI สำหรับใส่ Key
+        local ScreenGui = Instance.new("ScreenGui")
+        local MainFrame = Instance.new("Frame")
+        local Title = Instance.new("TextLabel")
+        local KeyInput = Instance.new("TextBox")
+        local ConfirmBtn = Instance.new("TextButton")
+        local FrameCorner = Instance.new("UICorner")
+        local InputCorner = Instance.new("UICorner")
+        local BtnCorner = Instance.new("UICorner")
+
+        -- 🛡️ ยัด GUI เข้า CoreGui หรือ gethui() เพื่อหลบการตรวจจับของเกม
+        if gethui then
+            ScreenGui.Parent = gethui()
+        elseif syn and syn.protect_gui then
+            syn.protect_gui(ScreenGui)
+            ScreenGui.Parent = CoreGui
+        else
+            ScreenGui.Parent = CoreGui
+        end
+
+        ScreenGui.Name = "TOUx1_KeySystem"
+        ScreenGui.ResetOnSpawn = false
+
+        -- 📦 โครงสร้างกล่องหลัก (Main Frame)
+        MainFrame.Name = "MainFrame"
+        MainFrame.Parent = ScreenGui
+        MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+        MainFrame.Position = UDim2.new(0.5, -125, 0.5, -75)
+        MainFrame.Size = UDim2.new(0, 250, 0, 150)
+        MainFrame.Active = true
+        MainFrame.Draggable = true
+
+        FrameCorner.CornerRadius = UDim.new(0, 8)
+        FrameCorner.Parent = MainFrame
+
+        -- 🏷️ หัวข้อ GUI
+        Title.Name = "Title"
+        Title.Parent = MainFrame
+        Title.BackgroundTransparency = 1
+        Title.Position = UDim2.new(0, 0, 0, 10)
+        Title.Size = UDim2.new(1, 0, 0, 25)
+        Title.Font = Enum.Font.SourceSansBold
+        Title.Text = "🔑 KEY SYSTEM"
+        Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Title.TextSize = 18
+
+        -- ✏️ ช่องพิมพ์ใส่ Key
+        KeyInput.Name = "KeyInput"
+        KeyInput.Parent = MainFrame
+        KeyInput.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        KeyInput.Position = UDim2.new(0.1, 0, 0.32, 0)
+        KeyInput.Size = UDim2.new(0.8, 0, 0, 35)
+        KeyInput.Font = Enum.Font.SourceSans
+        KeyInput.PlaceholderText = "กรอก Key ที่นี่..."
+        KeyInput.Text = ""
+        KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+        KeyInput.TextSize = 14
+
+        InputCorner.CornerRadius = UDim.new(0, 6)
+        InputCorner.Parent = KeyInput
+
+        -- 🔘 ปุ่มกด "ยืนยัน"
+        ConfirmBtn.Name = "ConfirmBtn"
+        ConfirmBtn.Parent = MainFrame
+        ConfirmBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 127)
+        ConfirmBtn.Position = UDim2.new(0.2, 0, 0.68, 0)
+        ConfirmBtn.Size = UDim2.new(0.6, 0, 0, 35)
+        ConfirmBtn.Font = Enum.Font.SourceSansBold
+        ConfirmBtn.Text = "ยืนยัน"
+        ConfirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ConfirmBtn.TextSize = 16
+
+        BtnCorner.CornerRadius = UDim.new(0, 6)
+        BtnCorner.Parent = ConfirmBtn
+
+        -- 🎯 ระบบตรวจจับการกดปุ่ม "ยืนยัน"
+        ConfirmBtn.MouseButton1Click:Connect(function()
+            if KeyInput.Text == CORRECT_KEY then
+                ScreenGui:Destroy() -- ทำลาย GUI ทิ้งเมื่อ Key ถูกต้อง
+                executeScript()     -- รันโค้ดหลัก
+            else
+                -- ⛔ เตะออกทันทีถ้ากรอก Key ผิด
+                LocalPlayer:Kick("คุณไม่ได้รับอนุญาต")
+            end
+        end)
     end
 end
