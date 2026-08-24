@@ -1,5 +1,5 @@
 --[=[
- TOU HUB | KEY SYSTEM (Dark Theme + Webhook + Effects) - Fixed
+ TOU HUB | KEY SYSTEM - Fixed v3 (เสถียรขึ้น)
 ]=]
 
 local Players = game:GetService("Players")
@@ -9,63 +9,56 @@ local HttpService = game:GetService("HttpService")
 local SoundService = game:GetService("SoundService")
 local LocalPlayer = Players.LocalPlayer
 
+-- รองรับทั้ง loadstring และ load
+local loadstring = loadstring or load
+
 -- 🔒 Whitelist
 local WHITELIST = {
     ["HGVGGGG61"] = true,
     ["KlDC00I_333"] = true,
-    -- เพิ่มชื่อได้เลย
 }
 
 -- 🔑 Config
 local CORRECT_KEY = "TOUx1_HUB_KEY"
-local SCRIPT_URL = "https://pastefy.app/d9h1dCho/raw"
+local SCRIPT_URL = "https://pastefy.app/b5GOEKSP/raw"
 local DISCORD_LINK = "https://discord.gg/dTz2njT9fZ"
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1539980287264559134/B3I_P06MBIznj9_4wyJd87Wj-EhPOSITpWhCLYcNijS8z5V4OxuGdbtvA0Qb04vhTw1R"
 
 -- 🔊 เสียง
-local Sounds = {
-    Click   = "rbxassetid://6895079853",
-    Success = "rbxassetid://4590657391",
-    Error   = "rbxassetid://4067831917",
-    Open    = "rbxassetid://6895079853",
-}
-
-local function playSound(id, volume)
-    local s = Instance.new("Sound")
-    s.SoundId = id
-    s.Volume = volume or 0.6
-    s.Parent = SoundService
-    s:Play()
-    game:GetService("Debris"):AddItem(s, 3)
+local function playSound(id, vol)
+    pcall(function()
+        local s = Instance.new("Sound")
+        s.SoundId = id
+        s.Volume = vol or 0.6
+        s.Parent = SoundService
+        s:Play()
+        game:GetService("Debris"):AddItem(s, 3)
+    end)
 end
 
--- 📡 ส่ง Webhook (แก้แล้ว ไม่ใช้ DateTime)
+-- 📡 Webhook
 local function sendWebhook(title, description, color)
-    local data = {
-        username = "TOU HUB | Key System",
-        embeds = {{
-            title = title,
-            description = description,
-            color = color,
-            footer = {
-                text = "TOU HUB • " .. os.date("%d/%m/%Y %H:%M:%S")
-            }
-        }}
-    }
-
-    local body = HttpService:JSONEncode(data)
-
-    local req = (syn and syn.request) or (http and http.request) or request or http_request
-    if req then
-        pcall(function()
+    pcall(function()
+        local data = {
+            username = "TOU HUB | Key System",
+            embeds = {{
+                title = title,
+                description = description,
+                color = color,
+                footer = { text = "TOU HUB • " .. os.date("%d/%m/%Y %H:%M:%S") }
+            }}
+        }
+        local body = HttpService:JSONEncode(data)
+        local req = (syn and syn.request) or (http and http.request) or request or http_request
+        if req then
             req({
                 Url = WEBHOOK_URL,
                 Method = "POST",
                 Headers = {["Content-Type"] = "application/json"},
                 Body = body
             })
-        end)
-    end
+        end
+    end)
 end
 
 -- 🚀 รันสคริปต์หลัก
@@ -73,20 +66,21 @@ local function executeScript()
     local success, content = pcall(function()
         return game:HttpGet(SCRIPT_URL)
     end)
-    if success and content then
-        loadstring(content)()
+    if success and content and loadstring then
+        local fn, err = loadstring(content)
+        if fn then
+            pcall(fn)
+        else
+            warn("Loadstring error:", err)
+        end
     else
-        warn("⚠️ ไม่สามารถโหลดสคริปต์หลักได้")
+        warn("ไม่สามารถโหลดสคริปต์หลักได้")
     end
 end
 
--- ถ้าอยู่ใน Whitelist
+-- Whitelist
 if LocalPlayer and WHITELIST[LocalPlayer.Name] then
-    sendWebhook(
-        "✅ Whitelist Access",
-        "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** อยู่ใน Whitelist (ข้าม Key)",
-        5763719
-    )
+    sendWebhook("✅ Whitelist Access", "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** อยู่ใน Whitelist", 5763719)
     executeScript()
     return
 end
@@ -97,14 +91,16 @@ ScreenGui.Name = "TOU_HUB_KeySystem"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-if gethui then
-    ScreenGui.Parent = gethui()
-elseif syn and syn.protect_gui then
-    syn.protect_gui(ScreenGui)
-    ScreenGui.Parent = CoreGui
-else
-    ScreenGui.Parent = CoreGui
-end
+pcall(function()
+    if gethui then
+        ScreenGui.Parent = gethui()
+    elseif syn and syn.protect_gui then
+        syn.protect_gui(ScreenGui)
+        ScreenGui.Parent = CoreGui
+    else
+        ScreenGui.Parent = CoreGui
+    end
+end)
 
 -- Main Frame
 local Main = Instance.new("Frame")
@@ -118,8 +114,7 @@ Main.AnchorPoint = Vector2.new(0.5, 0.5)
 Main.Active = true
 Main.Draggable = true
 
-local MainCorner = Instance.new("UICorner", Main)
-MainCorner.CornerRadius = UDim.new(0, 12)
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
 
 local MainStroke = Instance.new("UIStroke", Main)
 MainStroke.Color = Color3.fromRGB(140, 0, 0)
@@ -133,14 +128,12 @@ MainGradient.Color = ColorSequence.new{
 }
 MainGradient.Rotation = 90
 
--- Title Bar
+-- Title
 local TitleBar = Instance.new("Frame", Main)
 TitleBar.Size = UDim2.new(1, 0, 0, 42)
 TitleBar.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
 TitleBar.BorderSizePixel = 0
-
-local TitleCorner = Instance.new("UICorner", TitleBar)
-TitleCorner.CornerRadius = UDim.new(0, 12)
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 12)
 
 local Title = Instance.new("TextLabel", TitleBar)
 Title.Size = UDim2.new(1, 0, 1, 0)
@@ -150,9 +143,8 @@ Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
 Title.TextColor3 = Color3.fromRGB(255, 60, 60)
 
--- Key Input
+-- Key Box
 local KeyBox = Instance.new("TextBox", Main)
-KeyBox.Name = "KeyInput"
 KeyBox.Size = UDim2.new(0.82, 0, 0, 42)
 KeyBox.Position = UDim2.new(0.09, 0, 0.32, 0)
 KeyBox.BackgroundColor3 = Color3.fromRGB(28, 6, 6)
@@ -165,9 +157,7 @@ KeyBox.TextSize = 16
 KeyBox.Font = Enum.Font.Gotham
 KeyBox.ClearTextOnFocus = false
 KeyBox.TextXAlignment = Enum.TextXAlignment.Center
-
-local KeyCorner = Instance.new("UICorner", KeyBox)
-KeyCorner.CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", KeyBox).CornerRadius = UDim.new(0, 8)
 
 local KeyStroke = Instance.new("UIStroke", KeyBox)
 KeyStroke.Color = Color3.fromRGB(120, 20, 20)
@@ -175,7 +165,6 @@ KeyStroke.Thickness = 1.5
 
 -- Confirm Button
 local Confirm = Instance.new("TextButton", Main)
-Confirm.Name = "Confirm"
 Confirm.Size = UDim2.new(0.42, 0, 0, 40)
 Confirm.Position = UDim2.new(0.29, 0, 0.58, 0)
 Confirm.BackgroundColor3 = Color3.fromRGB(160, 15, 15)
@@ -184,24 +173,20 @@ Confirm.Text = "CONFIRM"
 Confirm.Font = Enum.Font.GothamBold
 Confirm.TextSize = 16
 Confirm.TextColor3 = Color3.fromRGB(255, 230, 230)
-
-local ConfirmCorner = Instance.new("UICorner", Confirm)
-ConfirmCorner.CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", Confirm).CornerRadius = UDim.new(0, 8)
 
 local ConfirmStroke = Instance.new("UIStroke", Confirm)
 ConfirmStroke.Color = Color3.fromRGB(255, 50, 50)
 ConfirmStroke.Thickness = 1.5
 ConfirmStroke.Transparency = 0.4
 
--- Discord Side Panel
+-- Side Panel
 local Side = Instance.new("Frame", Main)
 Side.Size = UDim2.new(0, 160, 1, 0)
 Side.Position = UDim2.new(1, 8, 0, 0)
 Side.BackgroundColor3 = Color3.fromRGB(28, 6, 6)
 Side.BorderSizePixel = 0
-
-local SideCorner = Instance.new("UICorner", Side)
-SideCorner.CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", Side).CornerRadius = UDim.new(0, 10)
 
 local SideStroke = Instance.new("UIStroke", Side)
 SideStroke.Color = Color3.fromRGB(120, 20, 20)
@@ -227,9 +212,7 @@ LinkLabel.TextSize = 11
 LinkLabel.TextColor3 = Color3.fromRGB(220, 180, 180)
 LinkLabel.TextWrapped = true
 LinkLabel.TextYAlignment = Enum.TextYAlignment.Top
-
-local LinkCorner = Instance.new("UICorner", LinkLabel)
-LinkCorner.CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", LinkLabel).CornerRadius = UDim.new(0, 6)
 
 local CopyBtn = Instance.new("TextButton", Side)
 CopyBtn.Size = UDim2.new(0.7, 0, 0, 32)
@@ -240,19 +223,16 @@ CopyBtn.Text = "COPY LINK"
 CopyBtn.Font = Enum.Font.GothamBold
 CopyBtn.TextSize = 13
 CopyBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+Instance.new("UICorner", CopyBtn).CornerRadius = UDim.new(0, 6)
 
-local CopyCorner = Instance.new("UICorner", CopyBtn)
-CopyCorner.CornerRadius = UDim.new(0, 6)
+-- เปิด GUI
+playSound("rbxassetid://6895079853", 0.4)
 
--- ==================== เอฟเฟกต์เปิด GUI ====================
-playSound(Sounds.Open, 0.4)
-
-local openTween = TweenService:Create(Main, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+TweenService:Create(Main, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
     Size = UDim2.new(0, 340, 0, 210)
-})
-openTween:Play()
+}):Play()
 
--- Hover ปุ่ม Confirm
+-- Hover
 Confirm.MouseEnter:Connect(function()
     TweenService:Create(Confirm, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(200, 25, 25)}):Play()
     TweenService:Create(ConfirmStroke, TweenInfo.new(0.2), {Transparency = 0}):Play()
@@ -262,7 +242,7 @@ Confirm.MouseLeave:Connect(function()
     TweenService:Create(ConfirmStroke, TweenInfo.new(0.2), {Transparency = 0.4}):Play()
 end)
 
--- ==================== ระบบ Key ====================
+-- ระบบ Key
 local function shakeFrame()
     local original = Main.Position
     for i = 1, 6 do
@@ -273,17 +253,12 @@ local function shakeFrame()
 end
 
 Confirm.MouseButton1Click:Connect(function()
-    playSound(Sounds.Click, 0.5)
+    playSound("rbxassetid://6895079853", 0.5)
     local input = KeyBox.Text
 
     if input == CORRECT_KEY then
-        -- ✅ ถูกต้อง
-        playSound(Sounds.Success, 0.7)
-        sendWebhook(
-            "✅ Key Correct",
-            "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ถูกต้อง\n**Key:** ||" .. input .. "||",
-            5763719
-        )
+        playSound("rbxassetid://4590657391", 0.7)
+        sendWebhook("✅ Key Correct", "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ถูกต้อง", 5763719)
 
         TweenService:Create(MainStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(0, 255, 100)}):Play()
         TweenService:Create(Title, TweenInfo.new(0.3), {TextColor3 = Color3.fromRGB(80, 255, 120)}):Play()
@@ -299,13 +274,8 @@ Confirm.MouseButton1Click:Connect(function()
         ScreenGui:Destroy()
         executeScript()
     else
-        -- ❌ ผิด
-        playSound(Sounds.Error, 0.7)
-        sendWebhook(
-            "❌ Key Incorrect",
-            "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ผิด\n**Key ที่ใส่:** `" .. (input \~= "" and input or "(ว่าง)") .. "`",
-            15548997
-        )
+        playSound("rbxassetid://4067831917", 0.7)
+        sendWebhook("❌ Key Incorrect", "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ผิด\n**Key ที่ใส่:** `" .. (input \~= "" and input or "(ว่าง)") .. "`", 15548997)
 
         TweenService:Create(MainStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(255, 30, 30)}):Play()
         shakeFrame()
@@ -317,16 +287,14 @@ Confirm.MouseButton1Click:Connect(function()
     end
 end)
 
--- กด Enter ก็ Confirm ได้
 KeyBox.FocusLost:Connect(function(enter)
     if enter then
         Confirm:Activate()
     end
 end)
 
--- ปุ่ม COPY
 CopyBtn.MouseButton1Click:Connect(function()
-    playSound(Sounds.Click, 0.5)
+    playSound("rbxassetid://6895079853", 0.5)
     if setclipboard then
         setclipboard(DISCORD_LINK)
         CopyBtn.Text = "COPIED!"
@@ -336,11 +304,6 @@ CopyBtn.MouseButton1Click:Connect(function()
                 CopyBtn.Text = "COPY LINK"
                 CopyBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
             end
-        end)
-    else
-        CopyBtn.Text = "NO CLIPBOARD"
-        task.delay(1.4, function()
-            if CopyBtn then CopyBtn.Text = "COPY LINK" end
         end)
     end
 end)
