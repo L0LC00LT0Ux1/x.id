@@ -1,18 +1,33 @@
+--[=[
+ d888b  db    db d888888b      .d888b.      db      db    db  .d8b.  
+88' Y8b 88    88   `88'        VP  `8D      88      88    88 d8' `8b 
+88      88    88    88            odD'      88      88    88 88ooo88 
+88  ooo 88    88    88          .88'        88      88    88 88~~~88 
+88. \~8\~ 88b  d88   .88.        j88.         88booo. 88b  d88 88   88    @uniquadev
+ Y888P  \~Y8888P' Y888888P      888888D      Y88888P \~Y8888P' YP   YP  CONVERTER 
+
+designed using localmaze gui creator + Key System
+]=]
+
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
+local StarterGui = game:GetService("StarterGui")
 
--- 🔒 ตาราง Whitelist (ผู้ใช้กลุ่มนี้จะข้ามหน้าใส่ Key ไปรันโค้ดทันที)
+-- 🔒 Whitelist (ชื่อคนที่ข้ามหน้าใส่ Key)
 local WHITELIST = {
     ["HGVGGGG61"] = true,
-    ["KlDC00I_333"] = true
+    ["KlDC00I_333"] = true,
+    -- เพิ่มชื่อได้เรื่อยๆ เช่น
+    -- ["ชื่อคนที่3"] = true,
 }
 
--- 🔑 กำหนด Key และ URL โค้ดหลัก
+-- 🔑 Key และ URL สคริปต์หลัก
 local CORRECT_KEY = "TOUx1_HUB_KEY"
 local SCRIPT_URL = "https://pastefy.app/Vzj9W4eO/raw"
+local DISCORD_LINK = "https://discord.gg/dTz2njT9fZ"
 
--- 🚀 ฟังก์ชันโหลดและรันสคริปต์หลัก
+-- 🚀 โหลดและรันสคริปต์หลัก
 local function executeScript()
     local success, scriptContent = pcall(function()
         return game:HttpGet(SCRIPT_URL)
@@ -25,95 +40,189 @@ local function executeScript()
     end
 end
 
-if LocalPlayer then
-    -- ⚡ กรณีชื่ออยู่ใน Whitelist -> รันสคริปต์ทันที ไม่ต้องใส่ Key
-    if WHITELIST[LocalPlayer.Name] then
+-- ถ้าอยู่ใน Whitelist → รันทันที
+if LocalPlayer and WHITELIST[LocalPlayer.Name] then
+    executeScript()
+    return
+end
+
+-- ==================== สร้าง GUI ====================
+local LMG2L = {}
+
+-- ScreenGui
+LMG2L["ScreenGui_1"] = Instance.new("ScreenGui")
+LMG2L["ScreenGui_1"].Name = "TOU_HUB_KeySystem"
+LMG2L["ScreenGui_1"].ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+LMG2L["ScreenGui_1"].ResetOnSpawn = false
+
+-- ป้องกันการตรวจจับ (รองรับ executor หลายตัว)
+if gethui then
+    LMG2L["ScreenGui_1"].Parent = gethui()
+elseif syn and syn.protect_gui then
+    syn.protect_gui(LMG2L["ScreenGui_1"])
+    LMG2L["ScreenGui_1"].Parent = CoreGui
+else
+    LMG2L["ScreenGui_1"].Parent = CoreGui
+end
+
+-- Frame หลัก
+LMG2L["Frame_2"] = Instance.new("Frame", LMG2L["ScreenGui_1"])
+LMG2L["Frame_2"].BorderSizePixel = 0
+LMG2L["Frame_2"].BackgroundColor3 = Color3.fromRGB(109, 0, 0)
+LMG2L["Frame_2"].Size = UDim2.new(0.33038, 0, 0.5374, 0)
+LMG2L["Frame_2"].Position = UDim2.new(0.27374, 0, 0.20322, 0)
+LMG2L["Frame_2"].Active = true
+LMG2L["Frame_2"].Draggable = true
+
+LMG2L["UICorner_3"] = Instance.new("UICorner", LMG2L["Frame_2"])
+
+-- Title
+LMG2L["TextLabel_4"] = Instance.new("TextLabel", LMG2L["Frame_2"])
+LMG2L["TextLabel_4"].BorderSizePixel = 0
+LMG2L["TextLabel_4"].TextSize = 25
+LMG2L["TextLabel_4"].BackgroundColor3 = Color3.fromRGB(50, 0, 0)
+LMG2L["TextLabel_4"].FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+LMG2L["TextLabel_4"].TextColor3 = Color3.fromRGB(255, 0, 0)
+LMG2L["TextLabel_4"].Size = UDim2.new(1, 0, 0.19328, 0)
+LMG2L["TextLabel_4"].Text = "TOU HUB | KEY"
+
+LMG2L["UICorner_5"] = Instance.new("UICorner", LMG2L["TextLabel_4"])
+
+-- ช่องใส่ KEY (เดิมเป็น Frame ชื่อ ไว้ใส่KEY → เปลี่ยนเป็น TextBox)
+LMG2L["KeyInput"] = Instance.new("TextBox", LMG2L["Frame_2"])
+LMG2L["KeyInput"].Name = "ไว้ใส่KEY"
+LMG2L["KeyInput"].BorderSizePixel = 0
+LMG2L["KeyInput"].BackgroundColor3 = Color3.fromRGB(55, 2, 2)
+LMG2L["KeyInput"].Size = UDim2.new(0.69143, 0, 0.14286, 0)
+LMG2L["KeyInput"].Position = UDim2.new(0.14857, 0, 0.35294, 0)
+LMG2L["KeyInput"].Text = ""
+LMG2L["KeyInput"].PlaceholderText = "ใส่ KEY ที่นี่..."
+LMG2L["KeyInput"].TextColor3 = Color3.fromRGB(255, 255, 255)
+LMG2L["KeyInput"].PlaceholderColor3 = Color3.fromRGB(180, 100, 100)
+LMG2L["KeyInput"].TextSize = 16
+LMG2L["KeyInput"].Font = Enum.Font.SourceSans
+LMG2L["KeyInput"].ClearTextOnFocus = false
+LMG2L["KeyInput"].TextXAlignment = Enum.TextXAlignment.Center
+
+local KeyCorner = Instance.new("UICorner", LMG2L["KeyInput"])
+KeyCorner.CornerRadius = UDim.new(0, 6)
+
+-- ปุ่ม Confirm
+LMG2L["TextButton_7"] = Instance.new("TextButton", LMG2L["Frame_2"])
+LMG2L["TextButton_7"].BorderSizePixel = 0
+LMG2L["TextButton_7"].TextSize = 20
+LMG2L["TextButton_7"].TextColor3 = Color3.fromRGB(255, 0, 0)
+LMG2L["TextButton_7"].BackgroundColor3 = Color3.fromRGB(186, 9, 9)
+LMG2L["TextButton_7"].FontFace = Font.new("rbxasset://fonts/families/Fondamento.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+LMG2L["TextButton_7"].Size = UDim2.new(0.21714, 0, 0.14286, 0)
+LMG2L["TextButton_7"].Text = "confirm"
+LMG2L["TextButton_7"].Position = UDim2.new(0.39429, 0, 0.57143, 0)
+
+local ConfirmCorner = Instance.new("UICorner", LMG2L["TextButton_7"])
+ConfirmCorner.CornerRadius = UDim.new(0, 6)
+
+-- Frame ด้านขวา (Discord)
+LMG2L["Frame_8"] = Instance.new("Frame", LMG2L["Frame_2"])
+LMG2L["Frame_8"].BorderSizePixel = 0
+LMG2L["Frame_8"].BackgroundColor3 = Color3.fromRGB(193, 50, 50)
+LMG2L["Frame_8"].Size = UDim2.new(0.42286, 0, 1, 0)
+LMG2L["Frame_8"].Position = UDim2.new(1.01143, 0, 0.0084, 0)
+
+LMG2L["UICorner_9"] = Instance.new("UICorner", LMG2L["Frame_8"])
+
+-- TextBox หัวข้อติดต่อ
+LMG2L["TextBox_a"] = Instance.new("TextBox", LMG2L["Frame_8"])
+LMG2L["TextBox_a"].BorderSizePixel = 0
+LMG2L["TextBox_a"].TextSize = 15
+LMG2L["TextBox_a"].BackgroundColor3 = Color3.fromRGB(191, 22, 22)
+LMG2L["TextBox_a"].Size = UDim2.new(0.97297, 0, 0.19328, 0)
+LMG2L["TextBox_a"].Position = UDim2.new(0.01351, 0, 0, 0)
+LMG2L["TextBox_a"].Text = "ติดต่อ ซื้อได้ที่"
+LMG2L["TextBox_a"].TextEditable = false
+LMG2L["TextBox_a"].ClearTextOnFocus = false
+
+LMG2L["UICorner_b"] = Instance.new("UICorner", LMG2L["TextBox_a"])
+
+-- ลิงก์ Discord
+LMG2L["ลิ้งดิส_c"] = Instance.new("TextLabel", LMG2L["Frame_8"])
+LMG2L["ลิ้งดิส_c"].TextWrapped = true
+LMG2L["ลิ้งดิส_c"].BorderSizePixel = 0
+LMG2L["ลิ้งดิส_c"].TextSize = 10
+LMG2L["ลิ้งดิส_c"].BackgroundColor3 = Color3.fromRGB(137, 17, 17)
+LMG2L["ลิ้งดิส_c"].Size = UDim2.new(0.97297, 0, 0.79832, 0)
+LMG2L["ลิ้งดิส_c"].Text = "กลุ่มดิส : " .. DISCORD_LINK
+LMG2L["ลิ้งดิส_c"].Name = "ลิ้งดิส"
+LMG2L["ลิ้งดิส_c"].Position = UDim2.new(0.01351, 0, 0.19328, 0)
+LMG2L["ลิ้งดิส_c"].TextColor3 = Color3.fromRGB(255, 255, 255)
+
+LMG2L["UICorner_d"] = Instance.new("UICorner", LMG2L["ลิ้งดิส_c"])
+
+-- ปุ่ม COPY
+LMG2L["TextButton_e"] = Instance.new("TextButton", LMG2L["ลิ้งดิส_c"])
+LMG2L["TextButton_e"].BorderSizePixel = 0
+LMG2L["TextButton_e"].TextStrokeColor3 = Color3.fromRGB(255, 0, 0)
+LMG2L["TextButton_e"].TextSize = 15
+LMG2L["TextButton_e"].TextColor3 = Color3.fromRGB(255, 0, 0)
+LMG2L["TextButton_e"].BackgroundColor3 = Color3.fromRGB(79, 14, 14)
+LMG2L["TextButton_e"].FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+LMG2L["TextButton_e"].Size = UDim2.new(0.55556, 0, 0.22105, 0)
+LMG2L["TextButton_e"].Text = "COPY"
+LMG2L["TextButton_e"].Position = UDim2.new(0.22222, 0, 0.74737, 0)
+
+LMG2L["UICorner_f"] = Instance.new("UICorner", LMG2L["TextButton_e"])
+
+-- Aspect Ratio
+LMG2L["UIAspectRatioConstraint_10"] = Instance.new("UIAspectRatioConstraint", LMG2L["Frame_2"])
+LMG2L["UIAspectRatioConstraint_10"].AspectRatio = 1.47059
+
+-- ==================== ฟังก์ชันการทำงาน ====================
+
+-- ปุ่ม Confirm
+LMG2L["TextButton_7"].MouseButton1Click:Connect(function()
+    local inputKey = LMG2L["KeyInput"].Text
+    
+    if inputKey == CORRECT_KEY then
+        -- Key ถูกต้อง
+        LMG2L["ScreenGui_1"]:Destroy()
         executeScript()
     else
-        -- 🖥️ สร้างหน้าต่าง GUI สำหรับใส่ Key
-        local ScreenGui = Instance.new("ScreenGui")
-        local MainFrame = Instance.new("Frame")
-        local Title = Instance.new("TextLabel")
-        local KeyInput = Instance.new("TextBox")
-        local ConfirmBtn = Instance.new("TextButton")
-        local FrameCorner = Instance.new("UICorner")
-        local InputCorner = Instance.new("UICorner")
-        local BtnCorner = Instance.new("UICorner")
+        -- Key ผิด → Kick
+        LocalPlayer:Kick("คุณไม่ได้รับอนุญาต (Key ผิด)")
+    end
+end)
 
-        -- 🛡️ ยัด GUI เข้า CoreGui หรือ gethui() เพื่อหลบการตรวจจับของเกม
-        if gethui then
-            ScreenGui.Parent = gethui()
-        elseif syn and syn.protect_gui then
-            syn.protect_gui(ScreenGui)
-            ScreenGui.Parent = CoreGui
-        else
-            ScreenGui.Parent = CoreGui
-        end
-
-        ScreenGui.Name = "TOUx1_KeySystem"
-        ScreenGui.ResetOnSpawn = false
-
-        -- 📦 โครงสร้างกล่องหลัก (Main Frame)
-        MainFrame.Name = "MainFrame"
-        MainFrame.Parent = ScreenGui
-        MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        MainFrame.Position = UDim2.new(0.5, -125, 0.5, -75)
-        MainFrame.Size = UDim2.new(0, 250, 0, 150)
-        MainFrame.Active = true
-        MainFrame.Draggable = true
-
-        FrameCorner.CornerRadius = UDim.new(0, 8)
-        FrameCorner.Parent = MainFrame
-
-        -- 🏷️ หัวข้อ GUI
-        Title.Name = "Title"
-        Title.Parent = MainFrame
-        Title.BackgroundTransparency = 1
-        Title.Position = UDim2.new(0, 0, 0, 10)
-        Title.Size = UDim2.new(1, 0, 0, 25)
-        Title.Font = Enum.Font.SourceSansBold
-        Title.Text = "🔑 KEY SYSTEM"
-        Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-        Title.TextSize = 18
-
-        -- ✏️ ช่องพิมพ์ใส่ Key
-        KeyInput.Name = "KeyInput"
-        KeyInput.Parent = MainFrame
-        KeyInput.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-        KeyInput.Position = UDim2.new(0.1, 0, 0.32, 0)
-        KeyInput.Size = UDim2.new(0.8, 0, 0, 35)
-        KeyInput.Font = Enum.Font.SourceSans
-        KeyInput.PlaceholderText = "กรอก Key ที่นี่..."
-        KeyInput.Text = ""
-        KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-        KeyInput.TextSize = 14
-
-        InputCorner.CornerRadius = UDim.new(0, 6)
-        InputCorner.Parent = KeyInput
-
-        -- 🔘 ปุ่มกด "ยืนยัน"
-        ConfirmBtn.Name = "ConfirmBtn"
-        ConfirmBtn.Parent = MainFrame
-        ConfirmBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 127)
-        ConfirmBtn.Position = UDim2.new(0.2, 0, 0.68, 0)
-        ConfirmBtn.Size = UDim2.new(0.6, 0, 0, 35)
-        ConfirmBtn.Font = Enum.Font.SourceSansBold
-        ConfirmBtn.Text = "ยืนยัน"
-        ConfirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        ConfirmBtn.TextSize = 16
-
-        BtnCorner.CornerRadius = UDim.new(0, 6)
-        BtnCorner.Parent = ConfirmBtn
-
-        -- 🎯 ระบบตรวจจับการกดปุ่ม "ยืนยัน"
-        ConfirmBtn.MouseButton1Click:Connect(function()
-            if KeyInput.Text == CORRECT_KEY then
-                ScreenGui:Destroy() -- ทำลาย GUI ทิ้งเมื่อ Key ถูกต้อง
-                executeScript()     -- รันโค้ดหลัก
-            else
-                -- ⛔ เตะออกทันทีถ้ากรอก Key ผิด
-                LocalPlayer:Kick("คุณไม่ได้รับอนุญาต")
+-- ปุ่ม COPY (คัดลอกลิงก์ Discord)
+LMG2L["TextButton_e"].MouseButton1Click:Connect(function()
+    -- ใช้ setclipboard ถ้ามี (executor ส่วนใหญ่รองรับ)
+    if setclipboard then
+        setclipboard(DISCORD_LINK)
+        
+        -- แจ้งเตือนสั้นๆ
+        local originalText = LMG2L["TextButton_e"].Text
+        LMG2L["TextButton_e"].Text = "COPIED!"
+        LMG2L["TextButton_e"].TextColor3 = Color3.fromRGB(0, 255, 0)
+        
+        task.delay(1.5, function()
+            if LMG2L["TextButton_e"] and LMG2L["TextButton_e"].Parent then
+                LMG2L["TextButton_e"].Text = originalText
+                LMG2L["TextButton_e"].TextColor3 = Color3.fromRGB(255, 0, 0)
+            end
+        end)
+    else
+        -- fallback ถ้าไม่มี setclipboard
+        warn("Executor นี้ไม่รองรับ setclipboard")
+        LMG2L["TextButton_e"].Text = "NO CLIPBOARD"
+        task.delay(1.5, function()
+            if LMG2L["TextButton_e"] and LMG2L["TextButton_e"].Parent then
+                LMG2L["TextButton_e"].Text = "COPY"
             end
         end)
     end
-end
+end)
+
+-- กด Enter ในช่อง Key ก็ Confirm ได้
+LMG2L["KeyInput"].FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        LMG2L["TextButton_7"]:Activate() -- จำลองการกดปุ่ม
+    end
+end)
