@@ -1,35 +1,326 @@
 -- ╔══════════════════════════════════════════════════════════════╗
--- ║ 🎲 AUTO ROLL + SELL + EVOLVE + FARM + STATS | EclipseLib    ║
+-- ║ 🎲 TOU HUB | Custom GUI Edition (Auto Roll/Farm/Stats/Rebirth)║
 -- ╚══════════════════════════════════════════════════════════════╝
 
-local EclipseLib = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/TOUx1/Roblox-script/main/auto_protected_1777159458057.lua"
-))()
-
--- 🪟 สร้าง Window
-local Win = EclipseLib:CreateWindow({
-    Name             = "🔥 รุ่นใหญ่ HUB",
-    LoadingTitle     = "🔥 รุ่นใหญ่ HUB",
-    LoadingSubtitle  = "กำลังโหลด...",
-    ConfigurationSaving = {
-        FolderName = "🔥 รุ่นใหญ่ HUB"
-    },
-})
-
--- ════════ SERVICES ════════
+-- ════════ SERVICES & LOCAL PLAYER ════════
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 
--- ════════ REMOTES ════════
+-- ลบ GUI เก่าถ้ามีอยู่
+local ParentGui = LocalPlayer:WaitForChild("PlayerGui")
+if ParentGui:FindFirstChild("TOU_HUB_GUI") then
+    ParentGui.TOU_HUB_GUI:Destroy()
+end
+
+-- ════════ CUSTOM GUI CREATION (FROM USER DATA) ════════
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TOU_HUB_GUI"
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = ParentGui
+
+-- 🔘 ปุ่มเปิด/ปิด GUI (🍣)
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Name = "ปุ่ฒเปิด/ปิด GUI"
+ToggleButton.Parent = ScreenGui
+ToggleButton.BorderSizePixel = 0
+ToggleButton.TextSize = 25
+ToggleButton.BackgroundColor3 = Color3.fromRGB(174, 33, 33)
+ToggleButton.Size = UDim2.new(0.06, 0, 0.09, 0)
+ToggleButton.Position = UDim2.new(0.02, 0, 0.4, 0)
+ToggleButton.Text = "🍣"
+ToggleButton.Active = true
+
+local UICorner_Btn = Instance.new("UICorner", ToggleButton)
+UICorner_Btn.CornerRadius = UDim.new(0, 100)
+
+local UIAspectRatioConstraint_Btn = Instance.new("UIAspectRatioConstraint", ToggleButton)
+UIAspectRatioConstraint_Btn.AspectRatio = 1.13636
+
+-- 🪟 Frame หลัก
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BorderSizePixel = 0
+MainFrame.BackgroundColor3 = Color3.fromRGB(117, 10, 10)
+MainFrame.Size = UDim2.new(0.42, 0, 0.72, 0)
+MainFrame.Position = UDim2.new(0.35, 0, 0.15, 0)
+
+local UICorner_Main = Instance.new("UICorner", MainFrame)
+local UIAspectRatioConstraint_Main = Instance.new("UIAspectRatioConstraint", MainFrame)
+UIAspectRatioConstraint_Main.AspectRatio = 1.275
+
+-- 📑 แถบช่อง (Sidebar)
+local Sidebar = Instance.new("Frame")
+Sidebar.Name = "แถบช่อง"
+Sidebar.Parent = MainFrame
+Sidebar.BorderSizePixel = 0
+Sidebar.BackgroundColor3 = Color3.fromRGB(148, 31, 31)
+Sidebar.Size = UDim2.new(0.24, 0, 1, 0)
+Sidebar.Position = UDim2.new(-0.245, 0, 0, 0)
+
+local UICorner_Side = Instance.new("UICorner", Sidebar)
+
+-- 🏷️ ปุ่มเมนูข้าง
+local BtnMain = Instance.new("TextButton")
+BtnMain.Name = "ช่องเมนูหลัก"
+BtnMain.Parent = Sidebar
+BtnMain.BorderSizePixel = 0
+BtnMain.TextSize = 20
+BtnMain.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnMain.BackgroundColor3 = Color3.fromRGB(190, 24, 24)
+BtnMain.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+BtnMain.Size = UDim2.new(0.85, 0, 0.14, 0)
+BtnMain.Position = UDim2.new(0.075, 0, 0.05, 0)
+BtnMain.Text = "เมนูหลัก"
+Instance.new("UICorner", BtnMain)
+
+local BtnFarm = Instance.new("TextButton")
+BtnFarm.Name = "ช่องฟาม"
+BtnFarm.Parent = Sidebar
+BtnFarm.BorderSizePixel = 0
+BtnFarm.TextSize = 20
+BtnFarm.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnFarm.BackgroundColor3 = Color3.fromRGB(190, 24, 24)
+BtnFarm.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+BtnFarm.Size = UDim2.new(0.85, 0, 0.14, 0)
+BtnFarm.Position = UDim2.new(0.075, 0, 0.22, 0)
+BtnFarm.Text = "ฟาม"
+Instance.new("UICorner", BtnFarm)
+
+local BtnRoll = Instance.new("TextButton")
+BtnRoll.Name = "ช่องสุ่มสัตว์"
+BtnRoll.Parent = Sidebar
+BtnRoll.BorderSizePixel = 0
+BtnRoll.TextSize = 20
+BtnRoll.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnRoll.BackgroundColor3 = Color3.fromRGB(190, 24, 24)
+BtnRoll.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+BtnRoll.Size = UDim2.new(0.85, 0, 0.14, 0)
+BtnRoll.Position = UDim2.new(0.075, 0, 0.39, 0)
+BtnRoll.Text = "สุ่มสัตว์"
+Instance.new("UICorner", BtnRoll)
+
+-- 📌 หัวข้อ GUI
+local TitleBox = Instance.new("TextBox")
+TitleBox.Name = "TitleBox"
+TitleBox.Parent = MainFrame
+TitleBox.BorderSizePixel = 0
+TitleBox.TextSize = 20
+TitleBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleBox.BackgroundColor3 = Color3.fromRGB(174, 3, 3)
+TitleBox.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+TitleBox.Size = UDim2.new(1, 0, 0.16, 0)
+TitleBox.Position = UDim2.new(0, 0, 0, 0)
+TitleBox.Text = "TOU HUB | กล้ามเนื้อตำนาน"
+TitleBox.ClearTextOnFocus = false
+Instance.new("UICorner", TitleBox)
+
+-- 🎨 จุดตกแต่ง
+local Dec1 = Instance.new("Frame", MainFrame)
+Dec1.BorderSizePixel = 0 Dec1.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+Dec1.Size = UDim2.new(0.044, 0, 0.081, 0) Dec1.Position = UDim2.new(0.857, 0, 0.04, 0)
+Instance.new("UICorner", Dec1).CornerRadius = UDim.new(0, 80)
+
+local Dec2 = Instance.new("Frame", MainFrame)
+Dec2.BorderSizePixel = 0 Dec2.BackgroundColor3 = Color3.fromRGB(68, 255, 15)
+Dec2.Size = UDim2.new(0.044, 0, 0.062, 0) Dec2.Position = UDim2.new(0.808, 0, 0.05, 0)
+Instance.new("UICorner", Dec2).CornerRadius = UDim.new(0, 80)
+
+local Dec3 = Instance.new("Frame", MainFrame)
+Dec3.BorderSizePixel = 0 Dec3.BackgroundColor3 = Color3.fromRGB(19, 150, 255)
+Dec3.Size = UDim2.new(0.044, 0, 0.1, 0) Dec3.Position = UDim2.new(0.906, 0, 0.03, 0)
+Instance.new("UICorner", Dec3).CornerRadius = UDim.new(0, 80)
+
+-- 📦 Container สำหรับใส่เนื้อหา Tab Pages
+local ContentContainer = Instance.new("Frame")
+ContentContainer.Name = "ContentContainer"
+ContentContainer.Parent = MainFrame
+ContentContainer.BackgroundTransparency = 1
+ContentContainer.Size = UDim2.new(0.95, 0, 0.8, 0)
+ContentContainer.Position = UDim2.new(0.025, 0, 0.18, 0)
+
+-- 🖐️ ระบบ Drag GUI ให้ลากย้ายหน้าจอได้
+local dragging, dragInput, dragStart, startPos
+local function update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+TitleBox.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+TitleBox.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+-- สลับ เปิด/ปิด GUI
+ToggleButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- ════════ CREATING TAB PAGES ════════
+local function createTabPage(name)
+    local page = Instance.new("ScrollingFrame")
+    page.Name = name
+    page.Parent = ContentContainer
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.ScrollBarThickness = 4
+    page.Visible = false
+    
+    local layout = Instance.new("UIListLayout", page)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 8)
+    
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 15)
+    end)
+    
+    return page
+end
+
+local MainPage = createTabPage("MainPage")
+local FarmPage = createTabPage("FarmPage")
+local RollPage = createTabPage("RollPage")
+
+MainPage.Visible = true -- เปิดหน้าหลักเป็น Default
+
+local function switchTab(targetPage)
+    MainPage.Visible = false
+    FarmPage.Visible = false
+    RollPage.Visible = false
+    targetPage.Visible = true
+end
+
+BtnMain.MouseButton1Click:Connect(function() switchTab(MainPage) end)
+BtnFarm.MouseButton1Click:Connect(function() switchTab(FarmPage) end)
+BtnRoll.MouseButton1Click:Connect(function() switchTab(RollPage) end)
+
+-- ════════ UI HELPERS FOR COMPONENTS ════════
+local function addToggle(parent, text, defaultState, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 40)
+    frame.BackgroundColor3 = Color3.fromRGB(85, 10, 10)
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
+    Instance.new("UICorner", frame)
+
+    local lbl = Instance.new("TextLabel", frame)
+    lbl.Size = UDim2.new(0.7, 0, 1, 0)
+    lbl.Position = UDim2.new(0.03, 0, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Text = text
+    lbl.TextSize = 14
+    lbl.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(0.22, 0, 0.7, 0)
+    btn.Position = UDim2.new(0.75, 0, 0.15, 0)
+    btn.BorderSizePixel = 0
+    btn.TextSize = 13
+    btn.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    Instance.new("UICorner", btn)
+
+    local state = defaultState
+    local function updateVisual()
+        btn.Text = state and "เปิด [ON]" or "ปิด [OFF]"
+        btn.BackgroundColor3 = state and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(231, 76, 60)
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end
+    updateVisual()
+
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        updateVisual()
+        callback(state)
+    end)
+    return frame
+end
+
+local function addButton(parent, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(160, 20, 20)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = text
+    btn.TextSize = 14
+    btn.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    btn.BorderSizePixel = 0
+    btn.Parent = parent
+    Instance.new("UICorner", btn)
+    
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+local function addTextbox(parent, text, defaultText, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 45)
+    frame.BackgroundColor3 = Color3.fromRGB(85, 10, 10)
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
+    Instance.new("UICorner", frame)
+
+    local lbl = Instance.new("TextLabel", frame)
+    lbl.Size = UDim2.new(0.55, 0, 1, 0)
+    lbl.Position = UDim2.new(0.03, 0, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Text = text
+    lbl.TextSize = 13
+    lbl.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+
+    local box = Instance.new("TextBox", frame)
+    box.Size = UDim2.new(0.38, 0, 0.7, 0)
+    box.Position = UDim2.new(0.58, 0, 0.15, 0)
+    box.BackgroundColor3 = Color3.fromRGB(40, 5, 5)
+    box.TextColor3 = Color3.fromRGB(255, 255, 255)
+    box.Text = defaultText
+    box.TextSize = 14
+    box.BorderSizePixel = 0
+    box.ClearTextOnFocus = false
+    Instance.new("UICorner", box)
+
+    box.FocusLost:Connect(function()
+        callback(box.Text)
+    end)
+    return box
+end
+
+-- ════════ REMOTES & BACKEND SERVICES ════════
 local openCrystalRemote = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("openCrystalRemote")
 local sellPetEvent = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("sellPetEvent")
 local sellPowerUpEvent = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("sellPowerUpEvent")
 local petEvolveEvent = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("petEvolveEvent")
 local rebirthRemote = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("rebirthRemote")
 
--- ════════ CONFIG ════════
+-- ════════ CONFIG & STATE ════════
 local CRYSTAL_30 = "Galaxy Oracle Crystal"
 local CRYSTAL_15 = "Inferno Crystal"
 local CRYSTAL_150 = "Industrial Crystal"
@@ -43,12 +334,10 @@ local SELL_AURAS_15 = {["Grand Supernova"]="1_2567413",["Lightning"]="1_2566778"
 local SELL_PETS_150 = {["Plasma Ravager"]="1_315848",["Reactor Beast"]="1_321232",["Volt Talon"]="1_321250",["Core Pup"]="1_321241"}
 local TITAN_REACTOR = {Name="Titan Reactor", DebugId="1_433530"}
 
--- ════════ EVOLVE CONFIG ════════
 local EVOLVE_30 = {Target="Darkstar Hunter", Need=5, Enabled=false}
 local EVOLVE_15 = {Target="Infernal Dragon", Need=5, Enabled=false}
 local EVOLVE_150 = {Target="Apex Overlord", Need=5, Enabled=false}
 
--- ════════ FOLDERS ════════
 local PET_FOLDERS = {
     LocalPlayer:WaitForChild("petsFolder"):WaitForChild("Advanced"),
     LocalPlayer.petsFolder:WaitForChild("Basic"),
@@ -64,22 +353,19 @@ local AURA_FOLDERS = {
     LocalPlayer.powerUpsFolder:WaitForChild("Rare"),
 }
 
--- ════════ STATE ════════
 local running30, running15, running150 = false, false, false
 local sellConn30, sellConn15, sellConn150 = nil, nil, nil
 local lastScan30, lastScan15, lastScan150 = 0, 0, 0
 local sellTitan = false
 local evolving = false
 
--- ═══════️ FARMING STATE ════════
 local farmEnabled = false
-local farmTool = nil
+local farmTool = "Weight"
 local fastMode = false
 local farmConn = nil
 local rebirthEnabled = false
 local rebirthConn = nil
 
--- 🛠️ [MODIFIED] เพิ่ม State สำหรับการจำกัดเป้าหมาย Rebirth
 local targetRebirths = 0
 local useRebirthTarget = false
 
@@ -136,13 +422,7 @@ local function tryEvolve(cfg)
     local count = countPet(cfg.Target)
     if count >= cfg.Need then
         evolving = true
-        EclipseLib:Notify({Title="🔄 Evolve", Content="กำลัง Evolve " .. cfg.Target .. "...", Duration=2, Type="info"})
-        local ok = pcall(function() petEvolveEvent:FireServer("evolvePet", cfg.Target) end)
-        if ok then
-            EclipseLib:Notify({Title="✅ Evolve สำเร็จ", Content=cfg.Target .. " Evolved!", Duration=3, Type="success"})
-        else
-            EclipseLib:Notify({Title="❌ Evolve ล้มเหลว", Content=cfg.Target, Duration=3, Type="error"})
-        end
+        pcall(function() petEvolveEvent:FireServer("evolvePet", cfg.Target) end)
         evolving = false
     end
 end
@@ -165,32 +445,20 @@ local function roll150()
     return ok
 end
 
--- ════════ FARMING HELPERS ════════
-local function getMuscleEvent()
-    return LocalPlayer:FindFirstChild("muscleEvent")
-end
+-- ════════ FARMING & REBIRTH LOGIC ════════
+local function getMuscleEvent() return LocalPlayer:FindFirstChild("muscleEvent") end
 
 local function equipTool(toolName)
-    local char = LocalPlayer.Character
-    if not char then return false end
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return false end
-
+    local char = LocalPlayer.Character if not char then return false end
+    local humanoid = char:FindFirstChildOfClass("Humanoid") if not humanoid then return false end
     local tool = LocalPlayer.Backpack:FindFirstChild(toolName) or char:FindFirstChild(toolName)
-    if tool then
-        humanoid:EquipTool(tool)
-        return true
-    end
+    if tool then humanoid:EquipTool(tool) return true end
     return false
 end
 
 local function fireMuscle()
     local event = getMuscleEvent()
-    if event then
-        pcall(function()
-            event:FireServer("rep")
-        end)
-    end
+    if event then pcall(function() event:FireServer("rep") end) end
 end
 
 local function startFarming()
@@ -200,12 +468,9 @@ local function startFarming()
         if not farmEnabled then return end
         if not equipTool(farmTool) then
             local char = LocalPlayer.Character
-            if not char then return end
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            if not humanoid then return end
-            local tool = LocalPlayer.Backpack:FindFirstChild(farmTool) or char:FindFirstChild(farmTool)
-            if tool then
-                humanoid:EquipTool(tool)
+            if char and char:FindFirstChildOfClass("Humanoid") then
+                local tool = LocalPlayer.Backpack:FindFirstChild(farmTool) or char:FindFirstChild(farmTool)
+                if tool then char.Humanoid:EquipTool(tool) end
             end
         end
         fireMuscle()
@@ -215,220 +480,29 @@ end
 
 local function stopFarming()
     farmEnabled = false
-    if farmConn then
-        farmConn:Disconnect()
-        farmConn = nil
-    end
+    if farmConn then farmConn:Disconnect() farmConn = nil end
 end
 
 local function stopRebirth()
     rebirthEnabled = false
-    if rebirthConn then
-        rebirthConn:Disconnect()
-        rebirthConn = nil
-    end
+    if rebirthConn then rebirthConn:Disconnect() rebirthConn = nil end
 end
 
--- 🛠️ [MODIFIED] ปรับปรุงระบบ Auto Rebirth ให้ตรวจสอบค่า Rebirths ปัจจุบันและหยุดอัตโนมัติเมื่อครบเป้าหมาย
 local function startRebirth()
     rebirthEnabled = true
     rebirthConn = RunService.Heartbeat:Connect(function()
         if not rebirthEnabled then return end
-        
-        -- ตรวจสอบค่า Rebirths ปัจจุบันของผู้เล่น
         local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
         local currentRebirths = (leaderstats and leaderstats:FindFirstChild("Rebirths")) and leaderstats.Rebirths.Value or 0
         
         if useRebirthTarget and currentRebirths >= targetRebirths then
             stopRebirth()
-            EclipseLib:Notify({
-                Title = "🎯 Rebirth ครบตามเป้าหมายแล้ว!",
-                Content = "คุณมี Rebirths ครบ " .. tostring(currentRebirths) .. " / " .. tostring(targetRebirths) .. " ครั้งแล้ว ปิดระบบรีเบิร์ดทันที! 🛑",
-                Duration = 5,
-                Type = "success"
-            })
             return
         end
-
-        pcall(function()
-            rebirthRemote:InvokeServer("rebirthRequest")
-        end)
+        pcall(function() rebirthRemote:InvokeServer("rebirthRequest") end)
         task.wait(0.5)
     end)
 end
-
--- ════════ STATS VIEWER ════════
-local function getPlayerStats(player)
-    local stats = {}
-    
-    stats.Agility = player:FindFirstChild("Agility") and player.Agility.Value or 0
-    stats.Durability = player:FindFirstChild("Durability") and player.Durability.Value or 0
-    
-    local leaderstats = player:FindFirstChild("leaderstats")
-    if leaderstats then
-        stats.Kills = leaderstats:FindFirstChild("Kills") and leaderstats.Kills.Value or 0
-        stats.Strength = leaderstats:FindFirstChild("Strength") and leaderstats.Strength.Value or 0
-        stats.Rebirths = leaderstats:FindFirstChild("Rebirths") and leaderstats.Rebirths.Value or 0
-        stats.Brawls = leaderstats:FindFirstChild("Brawls") and leaderstats.Brawls.Value or 0
-    else
-        stats.Kills = 0
-        stats.Strength = 0
-        stats.Rebirths = 0
-        stats.Brawls = 0
-    end
-    
-    stats.GoodKarma = player:FindFirstChild("goodKarma") and player.goodKarma.Value or 0
-    stats.BadKarma = player:FindFirstChild("badKarma") and player.badKarma.Value or 0
-    stats.MaxPetCapacity = player:FindFirstChild("maxPetCapacity") and player.maxPetCapacity.Value or 0
-    stats.Gems = player:FindFirstChild("Gems") and player.Gems.Value or 0
-    
-    -- ตรวจสอบบูสโปรตีน
-    local consumablesFolder = player:FindFirstChild("consumablesFolder")
-    local boosts = {}
-    if consumablesFolder then
-        for _, item in ipairs(consumablesFolder:GetChildren()) do
-            table.insert(boosts, item.Name .. " x" .. (item:IsA("NumberValue") and item.Value or 1))
-        end
-    end
-    
-    return stats, boosts
-end
-
--- ════════ TAB: สุ่มสัตว์ ════════
-local RollTab = Win:CreateTab({ Name = "สุ่มสัตว์", Icon = "🎲" })
-
-RollTab:AddSection({ Name = "💎 Galaxy Oracle Crystal (รี 30)" })
-
-RollTab:AddToggle({
-    Name = "▶ เปิดสุ่ม รี 30",
-    Description = "สุ่มสัตว์ Galaxy Oracle Crystal อัตโนมัติ",
-    Default = false,
-    ConfigKey = "Roll30Toggle",
-    Callback = function(state)
-        running30 = state
-        if running30 then
-            scan30()
-            tryEvolve(EVOLVE_30)
-            task.spawn(function()
-                while running30 do
-                    roll30()
-                    task.wait(DELAY_30)
-                end
-            end)
-            sellConn30 = RunService.Heartbeat:Connect(function()
-                if running30 and (os.clock() - lastScan30) > 0.3 then
-                    lastScan30 = os.clock()
-                    scan30()
-                    tryEvolve(EVOLVE_30)
-                end
-            end)
-        else
-            if sellConn30 then sellConn30:Disconnect() sellConn30 = nil end
-        end
-    end
-})
-
-RollTab:AddToggle({
-    Name = "☑️ Auto Evolve Darkstar Hunter",
-    Description = "เมื่อครบ 5 ตัวจะ Evolve อัตโนมัติ",
-    Default = false,
-    ConfigKey = "Evolve30Toggle",
-    Callback = function(state)
-        EVOLVE_30.Enabled = state
-    end
-})
-
-RollTab:AddSection({ Name = "🔥 Inferno Crystal (รี 15)" })
-
-RollTab:AddToggle({
-    Name = "▶ เปิดสุ่ม รี 15",
-    Description = "สุ่มสัตว์ Inferno Crystal อัตโนมัติ",
-    Default = false,
-    ConfigKey = "Roll15Toggle",
-    Callback = function(state)
-        running15 = state
-        if running15 then
-            scan15()
-            tryEvolve(EVOLVE_15)
-            task.spawn(function()
-                while running15 do
-                    roll15()
-                    task.wait(DELAY_15)
-                end
-            end)
-            sellConn15 = RunService.Heartbeat:Connect(function()
-                if running15 and (os.clock() - lastScan15) > 0.3 then
-                    lastScan15 = os.clock()
-                    scan15()
-                    tryEvolve(EVOLVE_15)
-                end
-            end)
-        else
-            if sellConn15 then sellConn15:Disconnect() sellConn15 = nil end
-        end
-    end
-})
-
-RollTab:AddToggle({
-    Name = "☑️ Auto Evolve Infernal Dragon",
-    Description = "เมื่อครบ 5 ตัวจะ Evolve อัตโนมัติ",
-    Default = false,
-    ConfigKey = "Evolve15Toggle",
-    Callback = function(state)
-        EVOLVE_15.Enabled = state
-    end
-})
-
-RollTab:AddSection({ Name = "🏭 Industrial Crystal (รี 150)" })
-
-RollTab:AddToggle({
-    Name = "▶ เปิดสุ่ม รี 150",
-    Description = "สุ่มสัตว์ Industrial Crystal แบบ Bulk อัตโนมัติ",
-    Default = false,
-    ConfigKey = "Roll150Toggle",
-    Callback = function(state)
-        running150 = state
-        if running150 then
-            scan150()
-            tryEvolve(EVOLVE_150)
-            task.spawn(function()
-                while running150 do
-                    roll150()
-                    task.wait(DELAY_150)
-                end
-            end)
-            sellConn150 = RunService.Heartbeat:Connect(function()
-                if running150 and (os.clock() - lastScan150) > 0.3 then
-                    lastScan150 = os.clock()
-                    scan150()
-                    tryEvolve(EVOLVE_150)
-                end
-            end)
-        else
-            if sellConn150 then sellConn150:Disconnect() sellConn150 = nil end
-        end
-    end
-})
-
-RollTab:AddToggle({
-    Name = "☑️ ลบ Titan Reactor",
-    Description = "ขายทิ้ง Titan Reactor ด้วย DebugId",
-    Default = false,
-    ConfigKey = "TitanToggle",
-    Callback = function(state)
-        sellTitan = state
-    end
-})
-
-RollTab:AddToggle({
-    Name = "☑️ Auto Evolve Apex Overlord",
-    Description = "เมื่อครบ 5 ตัวจะ Evolve อัตโนมัติ",
-    Default = false,
-    ConfigKey = "Evolve150Toggle",
-    Callback = function(state)
-        EVOLVE_150.Enabled = state
-    end
-})
 
 -- ════════ AUTO-SELL ON CHILD ADDED ════════
 for _, f in ipairs(PET_FOLDERS) do
@@ -450,300 +524,193 @@ for _, f in ipairs(AURA_FOLDERS) do
     end)
 end
 
--- ════════ TAB: ฟาม ════════
-local FarmTab = Win:CreateTab({ Name = "ฟาม", Icon = "💪" })
+-- ════════ POPULATING TAB 1: เมนูหลัก (MAIN & STATS) ════════
+local StatsDisplay = Instance.new("TextLabel")
+StatsDisplay.Size = UDim2.new(1, 0, 0, 160)
+StatsDisplay.BackgroundColor3 = Color3.fromRGB(50, 5, 5)
+StatsDisplay.TextColor3 = Color3.fromRGB(255, 255, 255)
+StatsDisplay.TextSize = 12
+StatsDisplay.TextXAlignment = Enum.TextXAlignment.Left
+StatsDisplay.TextYAlignment = Enum.TextYAlignment.Top
+StatsDisplay.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+StatsDisplay.Text = " 📊 กรุณาเลือกผู้เล่น หรือกดดูข้อมูล..."
+StatsDisplay.Parent = MainPage
+Instance.new("UICorner", StatsDisplay)
 
-FarmTab:AddSection({ Name = "🏋️ ออกกำลังกายอัตโนมัติ" })
-
-FarmTab:AddDropdown({
-    Name = "เลือก Tool ที่ใช้ฟาม",
-    Options = {"Weight", "Situps", "Pushups", "Handstands"},
-    Default = "Weight",
-    ConfigKey = "FarmToolSelect",
-    Callback = function(selected)
-        farmTool = selected
-    end
-})
-
-FarmTab:AddToggle({
-    Name = "▶ เปิดอ้อโต้ออกกำลังกาย",
-    Description = "ถือ Tool ที่เลือกและรันรีโมทยกน้ำหนักอัตโนมัติ",
-    Default = false,
-    ConfigKey = "FarmToggle",
-    Callback = function(state)
-        if state then
-            if not farmTool then
-                farmTool = "Weight"
-            end
-            startFarming()
-        else
-            stopFarming()
+local function getPlayerStats(player)
+    local stats = {}
+    stats.Agility = player:FindFirstChild("Agility") and player.Agility.Value or 0
+    stats.Durability = player:FindFirstChild("Durability") and player.Durability.Value or 0
+    local leaderstats = player:FindFirstChild("leaderstats")
+    if leaderstats then
+        stats.Kills = leaderstats:FindFirstChild("Kills") and leaderstats.Kills.Value or 0
+        stats.Strength = leaderstats:FindFirstChild("Strength") and leaderstats.Strength.Value or 0
+        stats.Rebirths = leaderstats:FindFirstChild("Rebirths") and leaderstats.Rebirths.Value or 0
+        stats.Brawls = leaderstats:FindFirstChild("Brawls") and leaderstats.Brawls.Value or 0
+    else stats.Kills, stats.Strength, stats.Rebirths, stats.Brawls = 0,0,0,0 end
+    stats.GoodKarma = player:FindFirstChild("goodKarma") and player.goodKarma.Value or 0
+    stats.BadKarma = player:FindFirstChild("badKarma") and player.badKarma.Value or 0
+    stats.MaxPetCapacity = player:FindFirstChild("maxPetCapacity") and player.maxPetCapacity.Value or 0
+    stats.Gems = player:FindFirstChild("Gems") and player.Gems.Value or 0
+    local consumablesFolder = player:FindFirstChild("consumablesFolder")
+    local boosts = {}
+    if consumablesFolder then
+        for _, item in ipairs(consumablesFolder:GetChildren()) do
+            table.insert(boosts, item.Name .. " x" .. (item:IsA("NumberValue") and item.Value or 1))
         end
     end
-})
+    return stats, boosts
+end
 
-FarmTab:AddToggle({
-    Name = "⚡ ยกน้ำหนักแบบไว (สำหรับคนมีแพ็ค)",
-    Description = "รันรีโมทยกน้ำหนักความเร็ว 0.01 วิ",
-    Default = false,
-    ConfigKey = "FastFarmToggle",
-    Callback = function(state)
-        fastMode = state
-        if farmEnabled then
-            stopFarming()
-            startFarming()
-        end
-    end
-})
-
-FarmTab:AddSection({ Name = "🔄 รีเบิร์ดอัตโนมัติ" })
-
--- 🛠️ [MODIFIED] เพิ่มช่องใส่จำนวน Rebirth และ Toggle เปิด/ปิดการใช้อัตโนมัติ
-FarmTab:AddTextbox({
-    Name = "🎯 ตั้งเป้าหมาย Rebirth (จำนวนที่ต้องการ)",
-    Description = "ใส่ตัวเลขเป้าหมาย Rebirth (เช่น 100, 500) หากเปิดใช้งาน สคริปต์จะหยุดเมื่อครบ",
-    Default = "0",
-    ConfigKey = "TargetRebirthInput",
-    Callback = function(text)
-        local num = tonumber(text)
-        if num then
-            targetRebirths = num
-        else
-            targetRebirths = 0
-        end
-    end
-})
-
-FarmTab:AddToggle({
-    Name = "☑️ จำกัดจำนวน Rebirth ตามเป้าหมาย",
-    Description = "เช็คค่า Rebirths ปัจจุบัน หากครบจำนวนที่ตั้งไว้จะหยุดอัตโนมัติ",
-    Default = false,
-    ConfigKey = "UseTargetRebirthToggle",
-    Callback = function(state)
-        useRebirthTarget = state
-    end
-})
-
-FarmTab:AddToggle({
-    Name = "▶ เปิดอ้อโต้รีเบิร์ด",
-    Description = "รันรีโมทรีเบิร์ดทุก 0.5 วิ",
-    Default = false,
-    ConfigKey = "RebirthToggle",
-    Callback = function(state)
-        if state then
-            startRebirth()
-        else
-            stopRebirth()
-        end
-    end
-})
-
--- ════════ FARM RESPAWN HANDLER ════════
-LocalPlayer.CharacterAdded:Connect(function(char)
-    if farmEnabled and farmTool then
-        task.wait(0.5)
-        local humanoid = char:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            local tool = LocalPlayer.Backpack:FindFirstChild(farmTool) or char:FindFirstChild(farmTool)
-            if tool then
-                humanoid:EquipTool(tool)
-            end
-        end
-    end
-end)
-
--- ════════ TAB: ดูค่าพลัง ════════
-local StatsTab = Win:CreateTab({ Name = "ดูค่าพลัง", Icon = "📊" })
-
-StatsTab:AddSection({ Name = "📈 สถิติผู้เล่น" })
-
--- 🛠️ [MODIFIED] เพิ่ม Paragraph สำหรับแสดงข้อมูลสถิติบน GUI โดยตรง
-local StatsParagraph = StatsTab:AddParagraph({
-    Title = "📌 สถิติผู้เล่นที่เลือก",
-    Content = "กรุณาเลือกผู้เล่นจาก รายชื่อด้านล่าง หรือกดปุ่มดูข้อมูลเพื่อแสดงผลที่นี่..."
-})
-
--- 🛠️ [MODIFIED] ฟังก์ชันอัปเดตข้อมูลขึ้น GUI ตรงๆ
-local function updateStatsOnGUI(player)
+local function renderStatsOnGUI(player)
     if not player then return end
     local stats, boosts = getPlayerStats(player)
-    
-    local contentText = string.format(
-        "👤 ชื่อผู้เล่น: %s\n" ..
-        "⚡ ความไว (Agility): %s\n" ..
-        "🛡️ ความทนทาน (Durability): %s\n" ..
-        "⚔️ จำนวนการฆ่า (Kills): %s\n" ..
-        "💪 ค่าพลังกล้าม (Strength): %s\n" ..
-        "🔄 รีเบิร์ด (Rebirths): %s\n" ..
-        "🥊 บรอล (Brawls): %s\n" ..
-        "😇 กรรมดี: %s | 😈 กรรมชั่ว: %s\n" ..
-        "🐾 ความจุสัตว์เลี้ยงสูงสุด: %s\n" ..
-        "💎 เพชร (Gems): %s\n" ..
-        "🧪 บูสที่เปิดใช้อยู่: %s",
-        player.Name,
-        tostring(stats.Agility),
-        tostring(stats.Durability),
-        tostring(stats.Kills),
-        tostring(stats.Strength),
-        tostring(stats.Rebirths),
-        tostring(stats.Brawls),
-        tostring(stats.GoodKarma),
-        tostring(stats.BadKarma),
-        tostring(stats.MaxPetCapacity),
-        tostring(stats.Gems),
-        (#boosts > 0 and table.concat(boosts, ", ") or "ไม่มี")
+    StatsDisplay.Text = string.format(
+        " 👤 ชื่อผู้เล่น: %s\n" ..
+        " ⚡ Agility: %s | 🛡️ Durability: %s\n" ..
+        " ⚔️ Kills: %s | 💪 Strength: %s\n" ..
+        " 🔄 Rebirths: %s | 🥊 Brawls: %s\n" ..
+        " 😇 กรรมดี: %s | 😈 กรรมชั่ว: %s\n" ..
+        " 🐾 ความจุสัตว์: %s | 💎 Gems: %s\n" ..
+        " 🧪 บูส: %s",
+        player.Name, tostring(stats.Agility), tostring(stats.Durability), tostring(stats.Kills),
+        tostring(stats.Strength), tostring(stats.Rebirths), tostring(stats.Brawls),
+        tostring(stats.GoodKarma), tostring(stats.BadKarma), tostring(stats.MaxPetCapacity),
+        tostring(stats.Gems), (#boosts > 0 and table.concat(boosts, ", ") or "ไม่มี")
     )
-    
-    if StatsParagraph and StatsParagraph.Set then
-        StatsParagraph:Set({
-            Title = "📊 ข้อมูลของ " .. player.Name,
-            Content = contentText
-        })
-    elseif StatsParagraph and StatsParagraph.Update then
-        StatsParagraph:Update({
-            Title = "📊 ข้อมูลของ " .. player.Name,
-            Content = contentText
-        })
-    end
 end
 
--- สร้าง dropdown เลือกผู้เล่น
-local playerNames = {}
-for _, player in ipairs(Players:GetPlayers()) do
-    table.insert(playerNames, player.Name)
-end
+local selectedTargetName = LocalPlayer.Name
 
-local selectedPlayerName = LocalPlayer.Name
-
-StatsTab:AddDropdown({
-    Name = "เลือกผู้เล่น",
-    Options = playerNames,
-    Default = LocalPlayer.Name,
-    ConfigKey = "PlayerSelect",
-    Callback = function(selected)
-        selectedPlayerName = selected
-        local player = Players:FindFirstChild(selected)
-        if player then
-            updateStatsOnGUI(player) -- 🛠️ [MODIFIED] แสดงผลบน GUI
-        end
-    end
-})
-
--- ปุ่มดูข้อมูลตัวเอง
-StatsTab:AddButton({
-    Name = "👤 ดูข้อมูลตัวเอง",
-    Description = "แสดงข้อมูลทั้งหมดของตัวเองลงบนหน้า GUI",
-    Callback = function()
-        updateStatsOnGUI(LocalPlayer) -- 🛠️ [MODIFIED] แสดงผลบน GUI
-    end
-})
-
--- ปุ่มดูข้อมูลผู้เล่นที่เลือก
-StatsTab:AddButton({
-    Name = "🔍 ดูข้อมูลผู้เล่นที่เลือก",
-    Description = "แสดงข้อมูลทั้งหมดของผู้เล่นที่เลือกลงบนหน้า GUI",
-    Callback = function()
-        local player = Players:FindFirstChild(selectedPlayerName)
-        if player then
-            updateStatsOnGUI(player) -- 🛠️ [MODIFIED] แสดงผลบน GUI
-        end
-    end
-})
-
--- อัปเดตรายชื่อผู้เล่นอัตโนมัติ
-Players.PlayerAdded:Connect(function(player)
-    table.insert(playerNames, player.Name)
+addTextbox(MainPage, "🔍 ชื่อผู้เล่นเป้าหมาย", LocalPlayer.Name, function(txt)
+    selectedTargetName = txt
 end)
 
-Players.PlayerRemoving:Connect(function(player)
-    for i, name in ipairs(playerNames) do
-        if name == player.Name then
-            table.remove(playerNames, i)
-            break
-        end
+addButton(MainPage, "👤 ดูข้อมูลตัวเอง", function()
+    renderStatsOnGUI(LocalPlayer)
+end)
+
+addButton(MainPage, "🔍 ดูข้อมูลผู้เล่นเป้าหมาย", function()
+    local target = Players:FindFirstChild(selectedTargetName)
+    if target then renderStatsOnGUI(target) end
+end)
+
+addToggle(MainPage, "⚡ Speed Hack (100)", false, function(state)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = state and 100 or 16
     end
 end)
 
--- ════════ TAB: Main ════════
-local MainTab = Win:CreateTab({ Name = "Main", Icon = "⚔️" })
-
-MainTab:AddSection({ Name = "⚙️ Player" })
-
-MainTab:AddToggle({
-    Name        = "Speed Hack",
-    Description = "เพิ่มความเร็วเดิน",
-    Default     = false,
-    ConfigKey   = "SpeedToggle",
-    Callback    = function(state)
-        local char = game.Players.LocalPlayer.Character
-        local hum = char and char:FindFirstChild("Humanoid")
-        if hum then
-            hum.WalkSpeed = state and 100 or 16
-        end
+addTextbox(MainPage, "🏃 WalkSpeed Custom", "16", function(txt)
+    local val = tonumber(txt)
+    local char = LocalPlayer.Character
+    if val and char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = val
     end
-})
+end)
 
-MainTab:AddSlider({
-    Name      = "Walk Speed",
-    Min       = 16,
-    Max       = 500,
-    Default   = 16,
-    ConfigKey = "SpeedSlider",
-    Callback  = function(val)
-        local char = game.Players.LocalPlayer.Character
-        local hum = char and char:FindFirstChild("Humanoid")
-        if hum then hum.WalkSpeed = val end
+addTextbox(MainPage, "🦘 JumpPower Custom", "50", function(txt)
+    local val = tonumber(txt)
+    local char = LocalPlayer.Character
+    if val and char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.JumpPower = val
     end
-})
+end)
 
-MainTab:AddSlider({
-    Name      = "Jump Power",
-    Min       = 50,
-    Max       = 500,
-    Default   = 50,
-    ConfigKey = "JumpSlider",
-    Callback  = function(val)
-        local char = game.Players.LocalPlayer.Character
-        local hum = char and char:FindFirstChild("Humanoid")
-        if hum then hum.JumpPower = val end
+-- ════════ POPULATING TAB 2: ฟาม (FARM & REBIRTH) ════════
+addTextbox(FarmPage, "🏋️ Tool เลือกฟาม (Weight/Situps/Pushups)", "Weight", function(txt)
+    farmTool = txt
+end)
+
+addToggle(FarmPage, "▶ เปิดอ้อโต้ออกกำลังกาย", false, function(state)
+    if state then startFarming() else stopFarming() end
+end)
+
+addToggle(FarmPage, "⚡ ยกน้ำหนักแบบไว (0.01s)", false, function(state)
+    fastMode = state
+    if farmEnabled then stopFarming() startFarming() end
+end)
+
+addTextbox(FarmPage, "🎯 ตั้งเป้าหมาย Rebirth (จำนวน)", "0", function(txt)
+    local num = tonumber(txt)
+    targetRebirths = num or 0
+end)
+
+addToggle(FarmPage, "☑️ จำกัด Rebirth ตามเป้าหมาย", false, function(state)
+    useRebirthTarget = state
+end)
+
+addToggle(FarmPage, "▶ เปิดอ้อโต้รีเบิร์ด", false, function(state)
+    if state then startRebirth() else stopRebirth() end
+end)
+
+-- ════════ POPULATING TAB 3: สุ่มสัตว์ (ROLL & EVOLVE) ════════
+addToggle(RollPage, "▶ เปิดสุ่ม รี 30 (Galaxy)", false, function(state)
+    running30 = state
+    if running30 then
+        scan30() tryEvolve(EVOLVE_30)
+        task.spawn(function()
+            while running30 do roll30() task.wait(DELAY_30) end
+        end)
+        sellConn30 = RunService.Heartbeat:Connect(function()
+            if running30 and (os.clock() - lastScan30) > 0.3 then
+                lastScan30 = os.clock() scan30() tryEvolve(EVOLVE_30)
+            end
+        end)
+    else
+        if sellConn30 then sellConn30:Disconnect() sellConn30 = nil end
     end
-})
+end)
 
--- ════════ TAB: Settings ════════
-local SettingsTab = Win:CreateTab({ Name = "Settings", Icon = "⚙️" })
+addToggle(RollPage, "☑️ Auto Evolve Darkstar Hunter", false, function(state)
+    EVOLVE_30.Enabled = state
+end)
 
-SettingsTab:AddSection({ Name = "🎨 Theme" })
-
-SettingsTab:AddDropdown({
-    Name      = "เลือก Theme",
-    Options   = {"Eclipse", "Ocean", "Forest", "Inferno", "Sakura", "Midnight"},
-    Default   = "Eclipse",
-    ConfigKey = "ThemeSelect",
-    Callback  = function(selected)
-        EclipseLib:Notify({
-            Title   = "🎨 Theme",
-            Content = "เปลี่ยนเป็น " .. selected,
-            Duration = 2,
-            Type    = "info"
-        })
+addToggle(RollPage, "▶ เปิดสุ่ม รี 15 (Inferno)", false, function(state)
+    running15 = state
+    if running15 then
+        scan15() tryEvolve(EVOLVE_15)
+        task.spawn(function()
+            while running15 do roll15() task.wait(DELAY_15) end
+        end)
+        sellConn15 = RunService.Heartbeat:Connect(function()
+            if running15 and (os.clock() - lastScan15) > 0.3 then
+                lastScan15 = os.clock() scan15() tryEvolve(EVOLVE_15)
+            end
+        end)
+    else
+        if sellConn15 then sellConn15:Disconnect() sellConn15 = nil end
     end
-})
+end)
 
-SettingsTab:AddKeybind({
-    Name        = "Toggle UI",
-    Default     = Enum.KeyCode.RightShift,
-    Description = "กดเพื่อเปิด/ปิด UI",
-    Callback    = function()
-        Win:Toggle()
+addToggle(RollPage, "☑️ Auto Evolve Infernal Dragon", false, function(state)
+    EVOLVE_15.Enabled = state
+end)
+
+addToggle(RollPage, "▶ เปิดสุ่ม รี 150 (Industrial)", false, function(state)
+    running150 = state
+    if running150 then
+        scan150() tryEvolve(EVOLVE_150)
+        task.spawn(function()
+            while running150 do roll150() task.wait(DELAY_150) end
+        end)
+        sellConn150 = RunService.Heartbeat:Connect(function()
+            if running150 and (os.clock() - lastScan150) > 0.3 then
+                lastScan150 = os.clock() scan150() tryEvolve(EVOLVE_150)
+            end
+        end)
+    else
+        if sellConn150 then sellConn150:Disconnect() sellConn150 = nil end
     end
-})
+end)
 
--- 🔔 แจ้งเตือนตอนโหลดเสร็จ
-EclipseLib:Notify({
-    Title    = "🔥 รุ่นใหญ่ HUB",
-    Content  = "โหลดสำเร็จแล้ว! | เพิ่มเป้าหมาย Rebirth + แสดงค่าพลังบน GUI",
-    Duration = 3,
-    Type     = "success"
-})
+addToggle(RollPage, "☑️ ลบ Titan Reactor", false, function(state)
+    sellTitan = state
+end)
 
-print("🎲 EclipseLib AutoRoll+Evolve+Farm+Stats (Target Rebirth & Direct GUI Stats) Loaded!")
+addToggle(RollPage, "☑️ Auto Evolve Apex Overlord", false, function(state)
+    EVOLVE_150.Enabled = state
+end)
+
+print("😈 TOU HUB Custom GUI Edition Loaded Fully!")
