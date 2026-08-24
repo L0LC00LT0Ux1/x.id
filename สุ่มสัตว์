@@ -86,7 +86,7 @@ Sidebar.Position = UDim2.new(-0.245, 0, 0, 0)
 
 local UICorner_Side = Instance.new("UICorner", Sidebar)
 
--- 🏷️ ปุ่มเมนูข้าง (ปรับขนาด Y เพื่อให้พอดี 6 ปุ่ม)
+-- 🏷️ ปุ่มเมนูข้าง
 local BtnMain = Instance.new("TextButton")
 BtnMain.Name = "ช่องเมนูหลัก"
 BtnMain.Parent = Sidebar
@@ -152,7 +152,6 @@ BtnSettings.Position = UDim2.new(0.075, 0, 0.51, 0)
 BtnSettings.Text = "ตั้งค่า"
 Instance.new("UICorner", BtnSettings)
 
--- ✏️ [แก้ไขเพิ่มเติม] เพิ่มปุ่มเมนู "เพิ่มเติม"
 local BtnExtra = Instance.new("TextButton")
 BtnExtra.Name = "ช่องเพิ่มเติม"
 BtnExtra.Parent = Sidebar
@@ -269,7 +268,7 @@ local StatsPage = createTabPage("StatsPage")
 local FarmPage = createTabPage("FarmPage")
 local RollPage = createTabPage("RollPage")
 local SettingsPage = createTabPage("SettingsPage")
-local ExtraPage = createTabPage("ExtraPage") -- ✏️ [แก้ไขเพิ่มเติม] สร้างหน้าเพิ่มเติม
+local ExtraPage = createTabPage("ExtraPage")
 
 MainPage.Visible = true
 
@@ -279,7 +278,7 @@ local function switchTab(targetPage)
     FarmPage.Visible = false
     RollPage.Visible = false
     SettingsPage.Visible = false
-    ExtraPage.Visible = false -- ✏️ [แก้ไขเพิ่มเติม] ซ่อนหน้าเพิ่มเติม
+    ExtraPage.Visible = false
     targetPage.Visible = true
 end
 
@@ -288,7 +287,7 @@ BtnStats.MouseButton1Click:Connect(function() switchTab(StatsPage) end)
 BtnFarm.MouseButton1Click:Connect(function() switchTab(FarmPage) end)
 BtnRoll.MouseButton1Click:Connect(function() switchTab(RollPage) end)
 BtnSettings.MouseButton1Click:Connect(function() switchTab(SettingsPage) end)
-BtnExtra.MouseButton1Click:Connect(function() switchTab(ExtraPage) end) -- ✏️ [แก้ไขเพิ่มเติม] สลับมาหน้าเพิ่มเติม
+BtnExtra.MouseButton1Click:Connect(function() switchTab(ExtraPage) end)
 
 -- ════════ UI HELPERS FOR COMPONENTS ════════
 local function addToggle(parent, text, defaultState, callback)
@@ -427,6 +426,7 @@ local function addToolSelector(parent, labelText, options, defaultOption, callba
     return frame
 end
 
+-- ✏️ [แก้ไขเพิ่มเติม] ปรับระบบเลือกผู้เล่นเป็น Dropdown แสดงรายชื่อทั้งหมดให้เลือกง่ายๆ
 local function addPlayerSelector(parent, labelText, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 45)
@@ -456,16 +456,53 @@ local function addPlayerSelector(parent, labelText, callback)
     btn.BorderSizePixel = 0
     Instance.new("UICorner", btn)
 
-    local playerIndex = 1
+    -- เมนู Dropdown รายชื่อผู้เล่น (สร้างซ้อนบน ScreenGui เพื่อไม่ให้โดนตัดขอบ)
+    local dropFrame = Instance.new("ScrollingFrame", ScreenGui)
+    dropFrame.Size = UDim2.new(0, 180, 0, 120)
+    dropFrame.BackgroundColor3 = Color3.fromRGB(50, 5, 5)
+    dropFrame.BorderSizePixel = 1
+    dropFrame.BorderColor3 = Color3.fromRGB(200, 30, 30)
+    dropFrame.Visible = false
+    dropFrame.ZIndex = 100
+    dropFrame.ScrollBarThickness = 4
+    Instance.new("UICorner", dropFrame)
+
+    local listLayout = Instance.new("UIListLayout", dropFrame)
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        dropFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
+    end)
+
+    local function updateDropdownList()
+        for _, child in ipairs(dropFrame:GetChildren()) do
+            if child:IsA("TextButton") then child:Destroy() end
+        end
+        for _, p in ipairs(Players:GetPlayers()) do
+            local pBtn = Instance.new("TextButton", dropFrame)
+            pBtn.Size = UDim2.new(1, 0, 0, 25)
+            pBtn.BackgroundColor3 = Color3.fromRGB(80, 10, 10)
+            pBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            pBtn.Text = p.Name
+            pBtn.TextSize = 12
+            pBtn.ZIndex = 101
+            pBtn.BorderSizePixel = 0
+            pBtn.MouseButton1Click:Connect(function()
+                btn.Text = p.Name .. " 🔽"
+                dropFrame.Visible = false
+                callback(p)
+            end)
+        end
+    end
 
     btn.MouseButton1Click:Connect(function()
-        local playerList = Players:GetPlayers()
-        if #playerList == 0 then return end
-        playerIndex = playerIndex % #playerList + 1
-        local selectedPlayer = playerList[playerIndex]
-        if selectedPlayer then
-            btn.Text = selectedPlayer.Name .. " 🔽"
-            callback(selectedPlayer)
+        if not dropFrame.Visible then
+            updateDropdownList()
+            local absPos = btn.AbsolutePosition
+            dropFrame.Position = UDim2.new(0, absPos.X, 0, absPos.Y + btn.AbsoluteSize.Y + 5)
+            dropFrame.Visible = true
+        else
+            dropFrame.Visible = false
         end
     end)
 
@@ -478,7 +515,7 @@ local sellPetEvent = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("sel
 local sellPowerUpEvent = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("sellPowerUpEvent")
 local petEvolveEvent = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("petEvolveEvent")
 local rebirthRemote = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("rebirthRemote")
-local freeGiftClaimRemote = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("freeGiftClaimRemote") -- ✏️ [แก้ไขเพิ่มเติม] รีโมทรับของขวัญฟรี
+local freeGiftClaimRemote = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("freeGiftClaimRemote")
 
 -- ════════ CONFIG & STATE ════════
 local CRYSTAL_30 = "Galaxy Oracle Crystal"
@@ -532,7 +569,6 @@ local rebirthConn = nil
 local targetRebirths = 0
 local useRebirthTarget = false
 
--- ✏️ [แก้ไขเพิ่มเติม] สเตทสำหรับฟังก์ชั่นในหน้า "เพิ่มเติม"
 local autoGiftEnabled = false
 local antiKnockbackEnabled = false
 local antiRebirthTpEnabled = false
@@ -697,7 +733,7 @@ local function startRebirth()
     end)
 end
 
--- ✏️ [แก้ไขเพิ่มเติม] ฟังก์ชั่นสำหรับระบบ "ต่อต้านกระเด็นต่อย" (Anti Knockback)
+-- ฟังก์ชั่นสำหรับระบบ "ต่อต้านกระเด็นต่อย" (Anti Knockback)
 local function setupAntiKnockback(char)
     if not char then return end
     local humanoid = char:WaitForChild("Humanoid", 5)
@@ -726,7 +762,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 if LocalPlayer.Character then setupAntiKnockback(LocalPlayer.Character) end
 
--- ✏️ [แก้ไขเพิ่มเติม] ฟังก์ชั่นสำหรับระบบ "ต่อต้านวาปรีเบิร์ด" (Anti Rebirth Teleport)
+-- ✏️ [แก้ไขเพิ่มเติม] ฟังก์ชั่นสำหรับระบบ "ต่อต้านวาปรีเบิร์ด" (ขยายเวลาเป็น 6 วินาที + ดึงกลับเมื่อถูกวาปไปไกล)
 task.spawn(function()
     while true do
         if not isMonitoringRebirthTp and LocalPlayer.Character then
@@ -752,11 +788,14 @@ local function setupRebirthTracker(leaderstats)
 
             local startTime = os.clock()
             task.spawn(function()
-                while os.clock() - startTime < 3 do
+                -- ✏️ ปรับเวลาเฝ้าระวังหลังรีเบิร์ดเป็น 6 วินาที
+                while os.clock() - startTime < 6 do
                     local char = LocalPlayer.Character
                     local root = char and char:FindFirstChild("HumanoidRootPart")
                     if root and returnCFrame then
-                        if (root.Position - returnCFrame.Position).Magnitude > 5 then
+                        -- ✏️ ตรวจจับเมื่อตำแหน่งเปลี่ยนไปไกลเกิน (เกิน 10 Studs) จะดึงกลับตำแหน่งเดิมทันทีหลังถูกวาป
+                        if (root.Position - returnCFrame.Position).Magnitude > 10 then
+                            task.wait(0.1) -- รอจังหวะวาปเสร็จเล็กน้อยแล้วดึงกลับทันที
                             root.CFrame = returnCFrame
                         end
                     end
@@ -1014,8 +1053,7 @@ addToggle(SettingsPage, "🔄 Auto Evolve อัตโนมัติ (ทุก
     EVOLVE_150.Enabled = state
 end)
 
--- ════════ POPULATING TAB 6: เพิ่มเติม (EXTRA MENU) ════════
--- ✏️ [แก้ไขเพิ่มเติม] เพิ่มฟังชั่น อ้อโต้รับรางวัล ( Claim 1-8 ทุกๆ 5 วินาที )
+-- ════════ POPULATING TAB 6: เพิ่มเติม ════════
 addToggle(ExtraPage, "🎁 อ้อโต้รับรางวัล (1-8)", false, function(state)
     autoGiftEnabled = state
     if autoGiftEnabled then
@@ -1033,7 +1071,6 @@ addToggle(ExtraPage, "🎁 อ้อโต้รับรางวัล (1-8)",
     end
 end)
 
--- ✏️ [แก้ไขเพิ่มเติม] เพิ่มฟังชั่น ต่อต้านกระเด็นต่อย ( Lock ตัวละคร 0.5s เมื่อเลือดลด )
 addToggle(ExtraPage, "🥊 ต่อต้านกระเด็นต่อย", false, function(state)
     antiKnockbackEnabled = state
     if LocalPlayer.Character then
@@ -1041,9 +1078,8 @@ addToggle(ExtraPage, "🥊 ต่อต้านกระเด็นต่อ�
     end
 end)
 
--- ✏️ [แก้ไขเพิ่มเติม] เพิ่มฟังชั่น ต่อต้านวาปรีเบิร์ด ( ย้อนกลับตำแหน่งเดิม ภายใน 3s หลังรีเบิร์ด )
 addToggle(ExtraPage, "🌀 ต่อต้านวาปรีเบิร์ด", false, function(state)
     antiRebirthTpEnabled = state
 end)
 
-print("😈 TOU HUB Custom GUI Edition Updated (Extra Tab Added) Successfully!")
+print("😈 TOU HUB Custom GUI Edition Updated (6s Anti-TP & Player Dropdown) Successfully!")
