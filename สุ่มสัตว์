@@ -13,6 +13,7 @@ local LocalPlayer = Players.LocalPlayer
 local WHITELIST = {
     ["HGVGGGG61"] = true,
     ["KlDC00I_333"] = true,
+    ["Wsghoi2744"] = true,
     -- เพิ่มชื่อได้เลย
 }
 
