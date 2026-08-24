@@ -1,5 +1,5 @@
 -- ╔══════════════════════════════════════════════════════════════╗
--- ║ 🎲 AUTO ROLL + SELL + EVOLVE | EclipseLib Edition        ║
+-- ║ 🎲 AUTO ROLL + SELL + EVOLVE + FARM + STATS | EclipseLib    ║
 -- ╚══════════════════════════════════════════════════════════════╝
 
 local EclipseLib = loadstring(game:HttpGet(
@@ -78,18 +78,10 @@ local fastMode = false
 local farmConn = nil
 local rebirthEnabled = false
 local rebirthConn = nil
-local rebirthTarget = 1
-local rebirthCount = 0
-local initialRebirth = 0
 
--- ═══════️ STATS DISPLAY STATE ════════
-local statsDisplayFrame = nil
-local statsDisplayLabels = {}
-local statsUpdateConn = nil
-local statsDisplayPlayer = nil
-
--- ═══════️ AUTO REBIRTH CHECK STATE ════════
-local autoRebirthCheckConn = nil
+-- 🛠️ [MODIFIED] เพิ่ม State สำหรับการจำกัดเป้าหมาย Rebirth
+local targetRebirths = 0
+local useRebirthTarget = false
 
 -- ════════ HELPERS ════════
 local function findNil(name)
@@ -229,51 +221,40 @@ local function stopFarming()
     end
 end
 
-local function startRebirth()
-    if rebirthEnabled then return end
-    
-    local currentRebirth = LocalPlayer.leaderstats.Rebirths.Value
-    initialRebirth = currentRebirth
-    rebirthCount = 0
-    rebirthEnabled = true
-    
-    EclipseLib:Notify({
-        Title = "🔄 รีเบิร์ด",
-        Content = "เริ่มรีเบิร์ด เป้าหมาย: " .. rebirthTarget .. " ครั้ง (ปัจจุบัน: " .. currentRebirth .. ")",
-        Duration = 3,
-        Type = "info"
-    })
-    
-    rebirthConn = RunService.Heartbeat:Connect(function()
-        if not rebirthEnabled then return end
-        
-        local current = LocalPlayer.leaderstats.Rebirths.Value
-        rebirthCount = current - initialRebirth
-        
-        if rebirthCount >= rebirthTarget then
-            stopRebirth()
-            EclipseLib:Notify({
-                Title = "✅ รีเบิร์ดสำเร็จ",
-                Content = "รีเบิร์ดครบ " .. rebirthTarget .. " ครั้งแล้ว! (ทั้งหมด: " .. current .. ")",
-                Duration = 3,
-                Type = "success"
-            })
-            return
-        end
-        
-        pcall(function()
-            rebirthRemote:InvokeServer("rebirthRequest")
-        end)
-        task.wait(0.5)
-    end)
-end
-
 local function stopRebirth()
     rebirthEnabled = false
     if rebirthConn then
         rebirthConn:Disconnect()
         rebirthConn = nil
     end
+end
+
+-- 🛠️ [MODIFIED] ปรับปรุงระบบ Auto Rebirth ให้ตรวจสอบค่า Rebirths ปัจจุบันและหยุดอัตโนมัติเมื่อครบเป้าหมาย
+local function startRebirth()
+    rebirthEnabled = true
+    rebirthConn = RunService.Heartbeat:Connect(function()
+        if not rebirthEnabled then return end
+        
+        -- ตรวจสอบค่า Rebirths ปัจจุบันของผู้เล่น
+        local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+        local currentRebirths = (leaderstats and leaderstats:FindFirstChild("Rebirths")) and leaderstats.Rebirths.Value or 0
+        
+        if useRebirthTarget and currentRebirths >= targetRebirths then
+            stopRebirth()
+            EclipseLib:Notify({
+                Title = "🎯 Rebirth ครบตามเป้าหมายแล้ว!",
+                Content = "คุณมี Rebirths ครบ " .. tostring(currentRebirths) .. " / " .. tostring(targetRebirths) .. " ครั้งแล้ว ปิดระบบรีเบิร์ดทันที! 🛑",
+                Duration = 5,
+                Type = "success"
+            })
+            return
+        end
+
+        pcall(function()
+            rebirthRemote:InvokeServer("rebirthRequest")
+        end)
+        task.wait(0.5)
+    end)
 end
 
 -- ════════ STATS VIEWER ════════
@@ -301,200 +282,16 @@ local function getPlayerStats(player)
     stats.MaxPetCapacity = player:FindFirstChild("maxPetCapacity") and player.maxPetCapacity.Value or 0
     stats.Gems = player:FindFirstChild("Gems") and player.Gems.Value or 0
     
+    -- ตรวจสอบบูสโปรตีน
     local consumablesFolder = player:FindFirstChild("consumablesFolder")
     local boosts = {}
     if consumablesFolder then
         for _, item in ipairs(consumablesFolder:GetChildren()) do
-            local value = item:IsA("NumberValue") and item.Value or 1
-            table.insert(boosts, item.Name .. " x" .. value)
+            table.insert(boosts, item.Name .. " x" .. (item:IsA("NumberValue") and item.Value or 1))
         end
     end
     
     return stats, boosts
-end
-
--- ═══════️ CREATE STATS DISPLAY GUI ════════
-local function createStatsDisplay()
-    if statsDisplayFrame then
-        statsDisplayFrame:Destroy()
-    end
-    
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "StatsDisplayGUI"
-    screenGui.ResetOnSpawn = false
-    screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    
-    local frame = Instance.new("Frame")
-    frame.Name = "StatsFrame"
-    frame.Size = UDim2.new(0, 380, 0, 450)
-    frame.Position = UDim2.new(0.65, 0, 0.15, 0)
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-    frame.BackgroundTransparency = 0.05
-    frame.BorderSizePixel = 0
-    frame.Parent = screenGui
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = frame
-    
-    local title = Instance.new("TextLabel")
-    title.Name = "Title"
-    title.Size = UDim2.new(1, 0, 0, 45)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
-    title.BackgroundTransparency = 0.1
-    title.Text = "📊 สถิติผู้เล่น"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextScaled = true
-    title.Font = Enum.Font.GothamBold
-    title.Parent = frame
-    
-    local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 12)
-    titleCorner.Parent = title
-    
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Name = "CloseBtn"
-    closeBtn.Size = UDim2.new(0, 40, 0, 40)
-    closeBtn.Position = UDim2.new(1, -45, 0, 2)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
-    closeBtn.Text = "✕"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.TextScaled = true
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.Parent = frame
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 8)
-    closeCorner.Parent = closeBtn
-    
-    closeBtn.MouseButton1Click:Connect(function()
-        if statsUpdateConn then
-            statsUpdateConn:Disconnect()
-            statsUpdateConn = nil
-        end
-        frame:Destroy()
-        statsDisplayFrame = nil
-        statsDisplayPlayer = nil
-    end)
-    
-    local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Name = "ScrollFrame"
-    scrollFrame.Size = UDim2.new(1, 0, 1, -45)
-    scrollFrame.Position = UDim2.new(0, 0, 0, 45)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.ScrollBarThickness = 5
-    scrollFrame.ScrollBarColor = Color3.fromRGB(100, 100, 150)
-    scrollFrame.Parent = frame
-    
-    local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0, 5)
-    layout.Parent = scrollFrame
-    
-    local padding = Instance.new("UIPadding")
-    padding.PaddingTop = UDim.new(0, 10)
-    padding.PaddingLeft = UDim.new(0, 10)
-    padding.PaddingRight = UDim.new(0, 10)
-    padding.PaddingBottom = UDim.new(0, 10)
-    padding.Parent = scrollFrame
-    
-    statsDisplayFrame = frame
-    statsDisplayLabels = {}
-    
-    return frame
-end
-
-local function updateStatsDisplay(playerName)
-    local player = Players:FindFirstChild(playerName)
-    if not player then 
-        EclipseLib:Notify({
-            Title = "❌ ไม่พบผู้เล่น",
-            Content = "ไม่พบผู้เล่นชื่อ " .. playerName,
-            Duration = 2,
-            Type = "error"
-        })
-        return 
-    end
-    
-    statsDisplayPlayer = playerName
-    
-    if not statsDisplayFrame then
-        createStatsDisplay()
-    end
-    
-    if statsUpdateConn then
-        statsUpdateConn:Disconnect()
-        statsUpdateConn = nil
-    end
-    
-    local function refreshStats()
-        if not statsDisplayFrame then return end
-        
-        local stats, boosts = getPlayerStats(player)
-        
-        for _, label in pairs(statsDisplayLabels) do
-            label:Destroy()
-        end
-        statsDisplayLabels = {}
-        
-        local scrollFrame = statsDisplayFrame:FindFirstChild("ScrollFrame")
-        if not scrollFrame then return end
-        
-        local titleLabel = statsDisplayFrame:FindFirstChild("Title")
-        if titleLabel then
-            titleLabel.Text = "📊 สถิติ: " .. player.Name
-        end
-        
-        local statsData = {
-            {"👤 ผู้เล่น", player.Name},
-            {"⚡ ค่าพลังความไว", tostring(stats.Agility)},
-            {"🛡️ ค่าพลังความทนทาน", tostring(stats.Durability)},
-            {"⚔️ การฆ่า", tostring(stats.Kills)},
-            {"💪 ค่าพลังกล้าม", tostring(stats.Strength)},
-            {"🔄 รีเบิร์ด", tostring(stats.Rebirths)},
-            {"😇 กรรมดี", tostring(stats.GoodKarma)},
-            {"😈 กรรมชั่ว", tostring(stats.BadKarma)},
-            {"🐾 ใส่สัตว์ได้", tostring(stats.MaxPetCapacity)},
-            {"💎 เพชร", tostring(stats.Gems)},
-            {"🥊 เข้าร่วมเวที", tostring(stats.Brawls)},
-            {"🧪 บูสโปรตีน", #boosts > 0 and table.concat(boosts, ", ") or "ไม่มี"},
-        }
-        
-        for _, data in ipairs(statsData) do
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1, -10, 0, 32)
-            label.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
-            label.BackgroundTransparency = 0.15
-            label.Text = data[1] .. ": " .. data[2]
-            label.TextColor3 = Color3.fromRGB(255, 255, 255)
-            label.TextScaled = true
-            label.Font = Enum.Font.Gotham
-            label.TextXAlignment = Enum.TextXAlignment.Left
-            label.Parent = scrollFrame
-            
-            local labelCorner = Instance.new("UICorner")
-            labelCorner.CornerRadius = UDim.new(0, 6)
-            labelCorner.Parent = label
-            
-            local labelPadding = Instance.new("UIPadding")
-            labelPadding.PaddingLeft = UDim.new(0, 10)
-            labelPadding.Parent = label
-            
-            table.insert(statsDisplayLabels, label)
-        end
-    end
-    
-    refreshStats()
-    
-    statsUpdateConn = RunService.Heartbeat:Connect(function()
-        if not statsDisplayFrame then
-            statsUpdateConn:Disconnect()
-            statsUpdateConn = nil
-            return
-        end
-        task.wait(1)
-        refreshStats()
-    end)
 end
 
 -- ════════ TAB: สุ่มสัตว์ ════════
@@ -701,24 +498,35 @@ FarmTab:AddToggle({
 
 FarmTab:AddSection({ Name = "🔄 รีเบิร์ดอัตโนมัติ" })
 
+-- 🛠️ [MODIFIED] เพิ่มช่องใส่จำนวน Rebirth และ Toggle เปิด/ปิดการใช้อัตโนมัติ
 FarmTab:AddTextbox({
-    Name = "จำนวนรีเบิร์ดที่ต้องการ",
-    Description = "ใส่จำนวนครั้งที่ต้องการรีเบิร์ด",
-    Default = "1",
-    ConfigKey = "RebirthTargetInput",
-    Callback = function(value)
-        local num = tonumber(value)
-        if num and num > 0 then
-            rebirthTarget = num
+    Name = "🎯 ตั้งเป้าหมาย Rebirth (จำนวนที่ต้องการ)",
+    Description = "ใส่ตัวเลขเป้าหมาย Rebirth (เช่น 100, 500) หากเปิดใช้งาน สคริปต์จะหยุดเมื่อครบ",
+    Default = "0",
+    ConfigKey = "TargetRebirthInput",
+    Callback = function(text)
+        local num = tonumber(text)
+        if num then
+            targetRebirths = num
         else
-            rebirthTarget = 1
+            targetRebirths = 0
         end
     end
 })
 
 FarmTab:AddToggle({
+    Name = "☑️ จำกัดจำนวน Rebirth ตามเป้าหมาย",
+    Description = "เช็คค่า Rebirths ปัจจุบัน หากครบจำนวนที่ตั้งไว้จะหยุดอัตโนมัติ",
+    Default = false,
+    ConfigKey = "UseTargetRebirthToggle",
+    Callback = function(state)
+        useRebirthTarget = state
+    end
+})
+
+FarmTab:AddToggle({
     Name = "▶ เปิดอ้อโต้รีเบิร์ด",
-    Description = "รีเบิร์ดอัตโนมัติตามจำนวนที่กำหนด",
+    Description = "รันรีโมทรีเบิร์ดทุก 0.5 วิ",
     Default = false,
     ConfigKey = "RebirthToggle",
     Callback = function(state)
@@ -749,6 +557,57 @@ local StatsTab = Win:CreateTab({ Name = "ดูค่าพลัง", Icon = "�
 
 StatsTab:AddSection({ Name = "📈 สถิติผู้เล่น" })
 
+-- 🛠️ [MODIFIED] เพิ่ม Paragraph สำหรับแสดงข้อมูลสถิติบน GUI โดยตรง
+local StatsParagraph = StatsTab:AddParagraph({
+    Title = "📌 สถิติผู้เล่นที่เลือก",
+    Content = "กรุณาเลือกผู้เล่นจาก รายชื่อด้านล่าง หรือกดปุ่มดูข้อมูลเพื่อแสดงผลที่นี่..."
+})
+
+-- 🛠️ [MODIFIED] ฟังก์ชันอัปเดตข้อมูลขึ้น GUI ตรงๆ
+local function updateStatsOnGUI(player)
+    if not player then return end
+    local stats, boosts = getPlayerStats(player)
+    
+    local contentText = string.format(
+        "👤 ชื่อผู้เล่น: %s\n" ..
+        "⚡ ความไว (Agility): %s\n" ..
+        "🛡️ ความทนทาน (Durability): %s\n" ..
+        "⚔️ จำนวนการฆ่า (Kills): %s\n" ..
+        "💪 ค่าพลังกล้าม (Strength): %s\n" ..
+        "🔄 รีเบิร์ด (Rebirths): %s\n" ..
+        "🥊 บรอล (Brawls): %s\n" ..
+        "😇 กรรมดี: %s | 😈 กรรมชั่ว: %s\n" ..
+        "🐾 ความจุสัตว์เลี้ยงสูงสุด: %s\n" ..
+        "💎 เพชร (Gems): %s\n" ..
+        "🧪 บูสที่เปิดใช้อยู่: %s",
+        player.Name,
+        tostring(stats.Agility),
+        tostring(stats.Durability),
+        tostring(stats.Kills),
+        tostring(stats.Strength),
+        tostring(stats.Rebirths),
+        tostring(stats.Brawls),
+        tostring(stats.GoodKarma),
+        tostring(stats.BadKarma),
+        tostring(stats.MaxPetCapacity),
+        tostring(stats.Gems),
+        (#boosts > 0 and table.concat(boosts, ", ") or "ไม่มี")
+    )
+    
+    if StatsParagraph and StatsParagraph.Set then
+        StatsParagraph:Set({
+            Title = "📊 ข้อมูลของ " .. player.Name,
+            Content = contentText
+        })
+    elseif StatsParagraph and StatsParagraph.Update then
+        StatsParagraph:Update({
+            Title = "📊 ข้อมูลของ " .. player.Name,
+            Content = contentText
+        })
+    end
+end
+
+-- สร้าง dropdown เลือกผู้เล่น
 local playerNames = {}
 for _, player in ipairs(Players:GetPlayers()) do
     table.insert(playerNames, player.Name)
@@ -763,22 +622,31 @@ StatsTab:AddDropdown({
     ConfigKey = "PlayerSelect",
     Callback = function(selected)
         selectedPlayerName = selected
+        local player = Players:FindFirstChild(selected)
+        if player then
+            updateStatsOnGUI(player) -- 🛠️ [MODIFIED] แสดงผลบน GUI
+        end
     end
 })
 
+-- ปุ่มดูข้อมูลตัวเอง
 StatsTab:AddButton({
     Name = "👤 ดูข้อมูลตัวเอง",
-    Description = "แสดงข้อมูลตัวเองใน GUI",
+    Description = "แสดงข้อมูลทั้งหมดของตัวเองลงบนหน้า GUI",
     Callback = function()
-        updateStatsDisplay(LocalPlayer.Name)
+        updateStatsOnGUI(LocalPlayer) -- 🛠️ [MODIFIED] แสดงผลบน GUI
     end
 })
 
+-- ปุ่มดูข้อมูลผู้เล่นที่เลือก
 StatsTab:AddButton({
     Name = "🔍 ดูข้อมูลผู้เล่นที่เลือก",
-    Description = "แสดงข้อมูลผู้เล่นที่เลือกใน GUI",
+    Description = "แสดงข้อมูลทั้งหมดของผู้เล่นที่เลือกลงบนหน้า GUI",
     Callback = function()
-        updateStatsDisplay(selectedPlayerName)
+        local player = Players:FindFirstChild(selectedPlayerName)
+        if player then
+            updateStatsOnGUI(player) -- 🛠️ [MODIFIED] แสดงผลบน GUI
+        end
     end
 })
 
@@ -793,12 +661,6 @@ Players.PlayerRemoving:Connect(function(player)
             table.remove(playerNames, i)
             break
         end
-    end
-    if player.Name == selectedPlayerName then
-        selectedPlayerName = LocalPlayer.Name
-    end
-    if statsDisplayPlayer == player.Name then
-        statsDisplayPlayer = nil
     end
 end)
 
@@ -879,9 +741,9 @@ SettingsTab:AddKeybind({
 -- 🔔 แจ้งเตือนตอนโหลดเสร็จ
 EclipseLib:Notify({
     Title    = "🔥 รุ่นใหญ่ HUB",
-    Content  = "โหลดสำเร็จแล้ว! | สุ่มสัตว์ + Evolve + ฟาม + รีเบิร์ด + ดูค่าพลัง พร้อมใช้งาน",
+    Content  = "โหลดสำเร็จแล้ว! | เพิ่มเป้าหมาย Rebirth + แสดงค่าพลังบน GUI",
     Duration = 3,
     Type     = "success"
 })
 
-print("🎲 EclipseLib AutoRoll+Evolve+Farm+Rebirth+Stats Loaded! | Tabs: สุ่มสัตว์, ฟาม, ดูค่าพลัง, Main, Settings")
+print("🎲 EclipseLib AutoRoll+Evolve+Farm+Stats (Target Rebirth & Direct GUI Stats) Loaded!")
