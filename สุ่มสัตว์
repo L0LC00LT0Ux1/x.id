@@ -1,5 +1,5 @@
 -- ╔══════════════════════════════════════════════════════════════╗
--- ║ 🎲 TOU HUB | Custom GUI Edition (Auto Roll/Farm/Stats/Rebirth)║
+-- ║ 🎲 TOU HUB | Custom GUI Edition (Auto Roll/Farm/Stats/Extra)║
 -- ╚══════════════════════════════════════════════════════════════╝
 
 -- ════════ SERVICES & LOCAL PLAYER ════════
@@ -16,7 +16,7 @@ if ParentGui:FindFirstChild("TOU_HUB_GUI") then
     ParentGui.TOU_HUB_GUI:Destroy()
 end
 
--- ฟังก์ชั่นแปลงตัวเลขเป็น k, m, b, t (เช่น 100,000 -> 100k / 1,000,000 -> 1m)
+-- ฟังก์ชั่นแปลงตัวเลขเป็น k, m, b, t
 local function formatNumber(val)
     local n = tonumber(val) or 0
     local sign = n < 0 and "-" or ""
@@ -37,7 +37,7 @@ local function formatNumber(val)
     return sign .. tostring(n)
 end
 
--- ════════ CUSTOM GUI CREATION (FROM USER DATA) ════════
+-- ════════ CUSTOM GUI CREATION ════════
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "TOU_HUB_GUI"
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -86,17 +86,17 @@ Sidebar.Position = UDim2.new(-0.245, 0, 0, 0)
 
 local UICorner_Side = Instance.new("UICorner", Sidebar)
 
--- 🏷️ ปุ่มเมนูข้าง
+-- 🏷️ ปุ่มเมนูข้าง (ปรับขนาด Y เพื่อให้พอดี 6 ปุ่ม)
 local BtnMain = Instance.new("TextButton")
 BtnMain.Name = "ช่องเมนูหลัก"
 BtnMain.Parent = Sidebar
 BtnMain.BorderSizePixel = 0
-BtnMain.TextSize = 18
+BtnMain.TextSize = 16
 BtnMain.TextColor3 = Color3.fromRGB(255, 255, 255)
 BtnMain.BackgroundColor3 = Color3.fromRGB(190, 24, 24)
 BtnMain.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-BtnMain.Size = UDim2.new(0.85, 0, 0.12, 0)
-BtnMain.Position = UDim2.new(0.075, 0, 0.04, 0)
+BtnMain.Size = UDim2.new(0.85, 0, 0.10, 0)
+BtnMain.Position = UDim2.new(0.075, 0, 0.03, 0)
 BtnMain.Text = "เมนูหลัก"
 Instance.new("UICorner", BtnMain)
 
@@ -104,12 +104,12 @@ local BtnStats = Instance.new("TextButton")
 BtnStats.Name = "ช่องดูข้อมูล"
 BtnStats.Parent = Sidebar
 BtnStats.BorderSizePixel = 0
-BtnStats.TextSize = 18
+BtnStats.TextSize = 16
 BtnStats.TextColor3 = Color3.fromRGB(255, 255, 255)
 BtnStats.BackgroundColor3 = Color3.fromRGB(190, 24, 24)
 BtnStats.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-BtnStats.Size = UDim2.new(0.85, 0, 0.12, 0)
-BtnStats.Position = UDim2.new(0.075, 0, 0.18, 0)
+BtnStats.Size = UDim2.new(0.85, 0, 0.10, 0)
+BtnStats.Position = UDim2.new(0.075, 0, 0.15, 0)
 BtnStats.Text = "ดูข้อมูล"
 Instance.new("UICorner", BtnStats)
 
@@ -117,12 +117,12 @@ local BtnFarm = Instance.new("TextButton")
 BtnFarm.Name = "ช่องฟาม"
 BtnFarm.Parent = Sidebar
 BtnFarm.BorderSizePixel = 0
-BtnFarm.TextSize = 18
+BtnFarm.TextSize = 16
 BtnFarm.TextColor3 = Color3.fromRGB(255, 255, 255)
 BtnFarm.BackgroundColor3 = Color3.fromRGB(190, 24, 24)
 BtnFarm.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-BtnFarm.Size = UDim2.new(0.85, 0, 0.12, 0)
-BtnFarm.Position = UDim2.new(0.075, 0, 0.32, 0)
+BtnFarm.Size = UDim2.new(0.85, 0, 0.10, 0)
+BtnFarm.Position = UDim2.new(0.075, 0, 0.27, 0)
 BtnFarm.Text = "ฟาม"
 Instance.new("UICorner", BtnFarm)
 
@@ -130,30 +130,43 @@ local BtnRoll = Instance.new("TextButton")
 BtnRoll.Name = "ช่องสุ่มสัตว์"
 BtnRoll.Parent = Sidebar
 BtnRoll.BorderSizePixel = 0
-BtnRoll.TextSize = 18
+BtnRoll.TextSize = 16
 BtnRoll.TextColor3 = Color3.fromRGB(255, 255, 255)
 BtnRoll.BackgroundColor3 = Color3.fromRGB(190, 24, 24)
 BtnRoll.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-BtnRoll.Size = UDim2.new(0.85, 0, 0.12, 0)
-BtnRoll.Position = UDim2.new(0.075, 0, 0.46, 0)
+BtnRoll.Size = UDim2.new(0.85, 0, 0.10, 0)
+BtnRoll.Position = UDim2.new(0.075, 0, 0.39, 0)
 BtnRoll.Text = "สุ่มสัตว์"
 Instance.new("UICorner", BtnRoll)
 
--- ✏️ [แก้ไขเพิ่มเติม] เพิ่มปุ่มเมนูตั้งค่า
 local BtnSettings = Instance.new("TextButton")
 BtnSettings.Name = "ช่องตั้งค่า"
 BtnSettings.Parent = Sidebar
 BtnSettings.BorderSizePixel = 0
-BtnSettings.TextSize = 18
+BtnSettings.TextSize = 16
 BtnSettings.TextColor3 = Color3.fromRGB(255, 255, 255)
 BtnSettings.BackgroundColor3 = Color3.fromRGB(190, 24, 24)
 BtnSettings.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-BtnSettings.Size = UDim2.new(0.85, 0, 0.12, 0)
-BtnSettings.Position = UDim2.new(0.075, 0, 0.60, 0)
+BtnSettings.Size = UDim2.new(0.85, 0, 0.10, 0)
+BtnSettings.Position = UDim2.new(0.075, 0, 0.51, 0)
 BtnSettings.Text = "ตั้งค่า"
 Instance.new("UICorner", BtnSettings)
 
--- ✏️ [แก้ไขเพิ่มเติม] เปลี่ยน TitleBox จาก TextBox เป็น TextLabel เพื่อไม่ให้ลบ/แก้ไขข้อความได้
+-- ✏️ [แก้ไขเพิ่มเติม] เพิ่มปุ่มเมนู "เพิ่มเติม"
+local BtnExtra = Instance.new("TextButton")
+BtnExtra.Name = "ช่องเพิ่มเติม"
+BtnExtra.Parent = Sidebar
+BtnExtra.BorderSizePixel = 0
+BtnExtra.TextSize = 16
+BtnExtra.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnExtra.BackgroundColor3 = Color3.fromRGB(190, 24, 24)
+BtnExtra.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+BtnExtra.Size = UDim2.new(0.85, 0, 0.10, 0)
+BtnExtra.Position = UDim2.new(0.075, 0, 0.63, 0)
+BtnExtra.Text = "เพิ่มเติม"
+Instance.new("UICorner", BtnExtra)
+
+-- TitleBox ข้อความส่วนหัว
 local TitleBox = Instance.new("TextLabel")
 TitleBox.Name = "TitleBox"
 TitleBox.Parent = MainFrame
@@ -255,16 +268,18 @@ local MainPage = createTabPage("MainPage")
 local StatsPage = createTabPage("StatsPage")
 local FarmPage = createTabPage("FarmPage")
 local RollPage = createTabPage("RollPage")
-local SettingsPage = createTabPage("SettingsPage") -- ✏️ [แก้ไขเพิ่มเติม] สร้างหน้าตั้งค่า
+local SettingsPage = createTabPage("SettingsPage")
+local ExtraPage = createTabPage("ExtraPage") -- ✏️ [แก้ไขเพิ่มเติม] สร้างหน้าเพิ่มเติม
 
-MainPage.Visible = true -- เปิดหน้าหลักเป็น Default
+MainPage.Visible = true
 
 local function switchTab(targetPage)
     MainPage.Visible = false
     StatsPage.Visible = false
     FarmPage.Visible = false
     RollPage.Visible = false
-    SettingsPage.Visible = false -- ✏️ [แก้ไขเพิ่มเติม] ซ่อนหน้าตั้งค่า
+    SettingsPage.Visible = false
+    ExtraPage.Visible = false -- ✏️ [แก้ไขเพิ่มเติม] ซ่อนหน้าเพิ่มเติม
     targetPage.Visible = true
 end
 
@@ -272,7 +287,8 @@ BtnMain.MouseButton1Click:Connect(function() switchTab(MainPage) end)
 BtnStats.MouseButton1Click:Connect(function() switchTab(StatsPage) end)
 BtnFarm.MouseButton1Click:Connect(function() switchTab(FarmPage) end)
 BtnRoll.MouseButton1Click:Connect(function() switchTab(RollPage) end)
-BtnSettings.MouseButton1Click:Connect(function() switchTab(SettingsPage) end) -- ✏️ [แก้ไขเพิ่มเติม] สลับมาหน้าตั้งค่า
+BtnSettings.MouseButton1Click:Connect(function() switchTab(SettingsPage) end)
+BtnExtra.MouseButton1Click:Connect(function() switchTab(ExtraPage) end) -- ✏️ [แก้ไขเพิ่มเติม] สลับมาหน้าเพิ่มเติม
 
 -- ════════ UI HELPERS FOR COMPONENTS ════════
 local function addToggle(parent, text, defaultState, callback)
@@ -411,7 +427,6 @@ local function addToolSelector(parent, labelText, options, defaultOption, callba
     return frame
 end
 
--- ✏️ [แก้ไขเพิ่มเติม] ฟังก์ชั่นสร้าง UI สำหรับเลือกผู้เล่นที่มีในเซิร์ฟเวอร์
 local function addPlayerSelector(parent, labelText, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 45)
@@ -463,6 +478,7 @@ local sellPetEvent = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("sel
 local sellPowerUpEvent = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("sellPowerUpEvent")
 local petEvolveEvent = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("petEvolveEvent")
 local rebirthRemote = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("rebirthRemote")
+local freeGiftClaimRemote = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("freeGiftClaimRemote") -- ✏️ [แก้ไขเพิ่มเติม] รีโมทรับของขวัญฟรี
 
 -- ════════ CONFIG & STATE ════════
 local CRYSTAL_30 = "Galaxy Oracle Crystal"
@@ -516,6 +532,15 @@ local rebirthConn = nil
 local targetRebirths = 0
 local useRebirthTarget = false
 
+-- ✏️ [แก้ไขเพิ่มเติม] สเตทสำหรับฟังก์ชั่นในหน้า "เพิ่มเติม"
+local autoGiftEnabled = false
+local antiKnockbackEnabled = false
+local antiRebirthTpEnabled = false
+local lastHealth = 100
+local healthConn = nil
+local savedPosBeforeRebirth = nil
+local isMonitoringRebirthTp = false
+
 -- ════════ HELPERS ════════
 local function findNil(name)
     if typeof(getnilinstances) ~= "function" then return nil end
@@ -568,7 +593,6 @@ end
 local function scan30() for n,_ in pairs(SELL_PETS_30) do sellPet(n) end for n,_ in pairs(SELL_AURAS_30) do sellAura(n) end end
 local function scan15() for n,id in pairs(SELL_PETS_15) do sellPetDbg(n,id) end for n,id in pairs(SELL_AURAS_15) do sellAuraDbg(n,id) end end
 
--- ✏️ [แก้ไขเพิ่มเติม] ปรับ scan150 ให้ลบ Titan Reactor อัตโนมัติทันที
 local function scan150()
     for n,id in pairs(SELL_PETS_150) do sellPetDbg(n,id) end
     sellPetDbg(TITAN_REACTOR.Name, TITAN_REACTOR.DebugId)
@@ -673,6 +697,84 @@ local function startRebirth()
     end)
 end
 
+-- ✏️ [แก้ไขเพิ่มเติม] ฟังก์ชั่นสำหรับระบบ "ต่อต้านกระเด็นต่อย" (Anti Knockback)
+local function setupAntiKnockback(char)
+    if not char then return end
+    local humanoid = char:WaitForChild("Humanoid", 5)
+    local root = char:WaitForChild("HumanoidRootPart", 5)
+    if not humanoid or not root then return end
+
+    lastHealth = humanoid.Health
+
+    if healthConn then healthConn:Disconnect() end
+    healthConn = humanoid.HealthChanged:Connect(function(newHealth)
+        if antiKnockbackEnabled and newHealth < lastHealth then
+            local currentAnchored = root.Anchored
+            root.Anchored = true
+            task.delay(0.5, function()
+                if root and root.Parent then
+                    root.Anchored = currentAnchored
+                end
+            end)
+        end
+        lastHealth = newHealth
+    end)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    setupAntiKnockback(char)
+end)
+if LocalPlayer.Character then setupAntiKnockback(LocalPlayer.Character) end
+
+-- ✏️ [แก้ไขเพิ่มเติม] ฟังก์ชั่นสำหรับระบบ "ต่อต้านวาปรีเบิร์ด" (Anti Rebirth Teleport)
+task.spawn(function()
+    while true do
+        if not isMonitoringRebirthTp and LocalPlayer.Character then
+            local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                savedPosBeforeRebirth = root.CFrame
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+local function setupRebirthTracker(leaderstats)
+    if not leaderstats then return end
+    local rebirths = leaderstats:WaitForChild("Rebirths", 5)
+    if not rebirths then return end
+
+    local currentCount = rebirths.Value
+    rebirths.Changed:Connect(function(newVal)
+        if antiRebirthTpEnabled and newVal > currentCount then
+            local returnCFrame = savedPosBeforeRebirth
+            isMonitoringRebirthTp = true
+
+            local startTime = os.clock()
+            task.spawn(function()
+                while os.clock() - startTime < 3 do
+                    local char = LocalPlayer.Character
+                    local root = char and char:FindFirstChild("HumanoidRootPart")
+                    if root and returnCFrame then
+                        if (root.Position - returnCFrame.Position).Magnitude > 5 then
+                            root.CFrame = returnCFrame
+                        end
+                    end
+                    task.wait(0.05)
+                end
+                isMonitoringRebirthTp = false
+            end)
+        end
+        currentCount = newVal
+    end)
+end
+
+local leaderstatsObj = LocalPlayer:FindFirstChild("leaderstats")
+if leaderstatsObj then setupRebirthTracker(leaderstatsObj) end
+LocalPlayer.ChildAdded:Connect(function(child)
+    if child.Name == "leaderstats" then setupRebirthTracker(child) end
+end)
+
 -- ════════ AUTO-SELL ON CHILD ADDED ════════
 for _, f in ipairs(PET_FOLDERS) do
     if f then
@@ -680,7 +782,6 @@ for _, f in ipairs(PET_FOLDERS) do
             if SELL_PETS_30[c.Name] and running30 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
             if SELL_PETS_15[c.Name] and running15 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
             if SELL_PETS_150[c.Name] and running150 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
-            -- ✏️ [แก้ไขเพิ่มเติม] ลบ Titan Reactor ทันทีแบบไม่ต้องใช้เงื่อนไขปุ่มกด
             if c.Name == TITAN_REACTOR.Name and running150 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
             if c.Name == EVOLVE_30.Target then task.delay(0.3, function() tryEvolve(EVOLVE_30) end) end
             if c.Name == EVOLVE_15.Target then task.delay(0.3, function() tryEvolve(EVOLVE_15) end) end
@@ -698,7 +799,7 @@ for _, f in ipairs(AURA_FOLDERS) do
     end
 end
 
--- ════════ POPULATING TAB 1: เมนูหลัก (MAIN ACCOUNT & GAME INFO) ════════
+-- ════════ POPULATING TAB 1: เมนูหลัก ════════
 local mapTitle = "ไม่พบข้อมูล"
 pcall(function()
     local info = MarketplaceService:GetProductInfo(game.PlaceId)
@@ -750,7 +851,7 @@ addTextbox(MainPage, "🦘 JumpPower Custom", "50", function(txt)
     end
 end)
 
--- ════════ POPULATING TAB 2: ดูข้อมูล (STATS MENU) ════════
+-- ════════ POPULATING TAB 2: ดูข้อมูล ════════
 local StatsDisplay = Instance.new("TextLabel")
 StatsDisplay.Size = UDim2.new(1, 0, 0, 160)
 StatsDisplay.BackgroundColor3 = Color3.fromRGB(50, 5, 5)
@@ -806,7 +907,6 @@ local function renderStatsOnGUI(player)
     )
 end
 
--- ✏️ [แก้ไขเพิ่มเติม] เปลี่ยนระบบกรอกชื่อเป็น Dropdown เลือกผู้เล่นที่มีอยู่ในเซิร์ฟเวอร์
 local selectedTargetPlayer = LocalPlayer
 
 addPlayerSelector(StatsPage, "👤 เลือกผู้เล่น", function(playerObj)
@@ -823,7 +923,7 @@ addButton(StatsPage, "🔍 ดูข้อมูลผู้เล่นที�
     end
 end)
 
--- ════════ POPULATING TAB 3: ฟาม (FARM & REBIRTH) ════════
+-- ════════ POPULATING TAB 3: ฟาม ════════
 local availableTools = {"Weight", "Situps", "Pushups", "Handstands"}
 addToolSelector(FarmPage, "🏋️ เลือก Tool ฟาม", availableTools, "Weight", function(selectedTool)
     farmTool = selectedTool
@@ -855,7 +955,7 @@ addToggle(FarmPage, "▶ เปิดอ้อโต้รีเบิร์ด"
     if state then startRebirth() else stopRebirth() end
 end)
 
--- ════════ POPULATING TAB 4: สุ่มสัตว์ (ROLL & EVOLVE) ════════
+-- ════════ POPULATING TAB 4: สุ่มสัตว์ ════════
 addToggle(RollPage, "▶ เปิดสุ่ม รี 30 (Galaxy)", false, function(state)
     running30 = state
     if running30 then
@@ -907,12 +1007,43 @@ addToggle(RollPage, "▶ เปิดสุ่ม รี 150 (Industrial)", fals
     end
 end)
 
--- ════════ POPULATING TAB 5: ตั้งค่า (SETTINGS MENU) ════════
--- ✏️ [แก้ไขเพิ่มเติม] เพิ่มหน้าตั้งค่าและระบบ Auto Evolve รวมสำหรับตู้ 30, 15, 150
+-- ════════ POPULATING TAB 5: ตั้งค่า ════════
 addToggle(SettingsPage, "🔄 Auto Evolve อัตโนมัติ (ทุกตู้)", false, function(state)
     EVOLVE_30.Enabled = state
     EVOLVE_15.Enabled = state
     EVOLVE_150.Enabled = state
 end)
 
-print("😈 TOU HUB Custom GUI Edition Updated Successfully!")
+-- ════════ POPULATING TAB 6: เพิ่มเติม (EXTRA MENU) ════════
+-- ✏️ [แก้ไขเพิ่มเติม] เพิ่มฟังชั่น อ้อโต้รับรางวัล ( Claim 1-8 ทุกๆ 5 วินาที )
+addToggle(ExtraPage, "🎁 อ้อโต้รับรางวัล (1-8)", false, function(state)
+    autoGiftEnabled = state
+    if autoGiftEnabled then
+        task.spawn(function()
+            while autoGiftEnabled do
+                for i = 1, 8 do
+                    if not autoGiftEnabled then break end
+                    pcall(function()
+                        freeGiftClaimRemote:InvokeServer("claimGift", i)
+                    end)
+                end
+                task.wait(5)
+            end
+        end)
+    end
+end)
+
+-- ✏️ [แก้ไขเพิ่มเติม] เพิ่มฟังชั่น ต่อต้านกระเด็นต่อย ( Lock ตัวละคร 0.5s เมื่อเลือดลด )
+addToggle(ExtraPage, "🥊 ต่อต้านกระเด็นต่อย", false, function(state)
+    antiKnockbackEnabled = state
+    if LocalPlayer.Character then
+        setupAntiKnockback(LocalPlayer.Character)
+    end
+end)
+
+-- ✏️ [แก้ไขเพิ่มเติม] เพิ่มฟังชั่น ต่อต้านวาปรีเบิร์ด ( ย้อนกลับตำแหน่งเดิม ภายใน 3s หลังรีเบิร์ด )
+addToggle(ExtraPage, "🌀 ต่อต้านวาปรีเบิร์ด", false, function(state)
+    antiRebirthTpEnabled = state
+end)
+
+print("😈 TOU HUB Custom GUI Edition Updated (Extra Tab Added) Successfully!")
