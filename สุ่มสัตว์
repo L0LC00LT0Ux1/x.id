@@ -1,5 +1,5 @@
 --[=[
- TOU HUB | KEY SYSTEM (Dark Theme + Webhook + Effects)
+ TOU HUB | KEY SYSTEM (Dark Theme + Webhook + Effects) - Fixed
 ]=]
 
 local Players = game:GetService("Players")
@@ -13,17 +13,16 @@ local LocalPlayer = Players.LocalPlayer
 local WHITELIST = {
     ["HGVGGGG61"] = true,
     ["KlDC00I_333"] = true,
-    ["Wsghoi2744"] = true,
     -- เพิ่มชื่อได้เลย
 }
 
 -- 🔑 Config
 local CORRECT_KEY = "TOUx1_HUB_KEY"
-local SCRIPT_URL = "https://pastefy.app/hJd8vEeC/raw"
+local SCRIPT_URL = "https://pastefy.app/d9h1dCho/raw"
 local DISCORD_LINK = "https://discord.gg/dTz2njT9fZ"
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1539980287264559134/B3I_P06MBIznj9_4wyJd87Wj-EhPOSITpWhCLYcNijS8z5V4OxuGdbtvA0Qb04vhTw1R"
 
--- 🔊 เสียง (Free Roblox Assets)
+-- 🔊 เสียง
 local Sounds = {
     Click   = "rbxassetid://6895079853",
     Success = "rbxassetid://4590657391",
@@ -40,7 +39,7 @@ local function playSound(id, volume)
     game:GetService("Debris"):AddItem(s, 3)
 end
 
--- 📡 ส่ง Webhook
+-- 📡 ส่ง Webhook (แก้แล้ว ไม่ใช้ DateTime)
 local function sendWebhook(title, description, color)
     local data = {
         username = "TOU HUB | Key System",
@@ -48,8 +47,9 @@ local function sendWebhook(title, description, color)
             title = title,
             description = description,
             color = color,
-            footer = { text = "TOU HUB • " .. os.date("%d/%m/%Y %H:%M:%S") },
-            timestamp = DateTime.now():ToIsoDate()
+            footer = {
+                text = "TOU HUB • " .. os.date("%d/%m/%Y %H:%M:%S")
+            }
         }}
     }
 
@@ -61,7 +61,7 @@ local function sendWebhook(title, description, color)
             req({
                 Url = WEBHOOK_URL,
                 Method = "POST",
-                Headers = { ["Content-Type"] = "application/json" },
+                Headers = {["Content-Type"] = "application/json"},
                 Body = body
             })
         end)
@@ -80,12 +80,12 @@ local function executeScript()
     end
 end
 
--- ถ้าอยู่ใน Whitelist → รันเลย + แจ้ง Webhook
+-- ถ้าอยู่ใน Whitelist
 if LocalPlayer and WHITELIST[LocalPlayer.Name] then
     sendWebhook(
         "✅ Whitelist Access",
         "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** อยู่ใน Whitelist (ข้าม Key)",
-        5763719 -- เขียว
+        5763719
     )
     executeScript()
     return
@@ -112,7 +112,7 @@ Main.Name = "Main"
 Main.Parent = ScreenGui
 Main.BackgroundColor3 = Color3.fromRGB(18, 5, 5)
 Main.BorderSizePixel = 0
-Main.Size = UDim2.new(0, 0, 0, 0) -- เริ่มเล็กเพื่อทำ Scale
+Main.Size = UDim2.new(0, 0, 0, 0)
 Main.Position = UDim2.new(0.5, 0, 0.5, 0)
 Main.AnchorPoint = Vector2.new(0.5, 0.5)
 Main.Active = true
@@ -282,16 +282,14 @@ Confirm.MouseButton1Click:Connect(function()
         sendWebhook(
             "✅ Key Correct",
             "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ถูกต้อง\n**Key:** ||" .. input .. "||",
-            5763719 -- เขียว
+            5763719
         )
 
-        -- เอฟเฟกต์เขียว
         TweenService:Create(MainStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(0, 255, 100)}):Play()
         TweenService:Create(Title, TweenInfo.new(0.3), {TextColor3 = Color3.fromRGB(80, 255, 120)}):Play()
 
         task.wait(0.6)
 
-        -- หายไปอย่างนุ่ม
         local close = TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
             Size = UDim2.new(0, 0, 0, 0),
             BackgroundTransparency = 1
@@ -306,8 +304,43 @@ Confirm.MouseButton1Click:Connect(function()
         sendWebhook(
             "❌ Key Incorrect",
             "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ผิด\n**Key ที่ใส่:** `" .. (input \~= "" and input or "(ว่าง)") .. "`",
-            15548997 -- แดง
+            15548997
         )
 
-        -- เอฟเฟกต์แดง + สั่น
-        TweenService:Create
+        TweenService:Create(MainStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(255, 30, 30)}):Play()
+        shakeFrame()
+        task.wait(0.4)
+        TweenService:Create(MainStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(140, 0, 0)}):Play()
+
+        task.wait(0.3)
+        LocalPlayer:Kick("คุณไม่ได้รับอนุญาต (Key ผิด)")
+    end
+end)
+
+-- กด Enter ก็ Confirm ได้
+KeyBox.FocusLost:Connect(function(enter)
+    if enter then
+        Confirm:Activate()
+    end
+end)
+
+-- ปุ่ม COPY
+CopyBtn.MouseButton1Click:Connect(function()
+    playSound(Sounds.Click, 0.5)
+    if setclipboard then
+        setclipboard(DISCORD_LINK)
+        CopyBtn.Text = "COPIED!"
+        CopyBtn.TextColor3 = Color3.fromRGB(80, 255, 120)
+        task.delay(1.4, function()
+            if CopyBtn and CopyBtn.Parent then
+                CopyBtn.Text = "COPY LINK"
+                CopyBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+            end
+        end)
+    else
+        CopyBtn.Text = "NO CLIPBOARD"
+        task.delay(1.4, function()
+            if CopyBtn then CopyBtn.Text = "COPY LINK" end
+        end)
+    end
+end)
