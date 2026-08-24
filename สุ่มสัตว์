@@ -139,8 +139,22 @@ BtnRoll.Position = UDim2.new(0.075, 0, 0.46, 0)
 BtnRoll.Text = "สุ่มสัตว์"
 Instance.new("UICorner", BtnRoll)
 
--- 📌 หัวข้อ GUI
-local TitleBox = Instance.new("TextBox")
+-- ✏️ [แก้ไขเพิ่มเติม] เพิ่มปุ่มเมนูตั้งค่า
+local BtnSettings = Instance.new("TextButton")
+BtnSettings.Name = "ช่องตั้งค่า"
+BtnSettings.Parent = Sidebar
+BtnSettings.BorderSizePixel = 0
+BtnSettings.TextSize = 18
+BtnSettings.TextColor3 = Color3.fromRGB(255, 255, 255)
+BtnSettings.BackgroundColor3 = Color3.fromRGB(190, 24, 24)
+BtnSettings.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+BtnSettings.Size = UDim2.new(0.85, 0, 0.12, 0)
+BtnSettings.Position = UDim2.new(0.075, 0, 0.60, 0)
+BtnSettings.Text = "ตั้งค่า"
+Instance.new("UICorner", BtnSettings)
+
+-- ✏️ [แก้ไขเพิ่มเติม] เปลี่ยน TitleBox จาก TextBox เป็น TextLabel เพื่อไม่ให้ลบ/แก้ไขข้อความได้
+local TitleBox = Instance.new("TextLabel")
 TitleBox.Name = "TitleBox"
 TitleBox.Parent = MainFrame
 TitleBox.BorderSizePixel = 0
@@ -151,7 +165,7 @@ TitleBox.FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.Font
 TitleBox.Size = UDim2.new(1, 0, 0.16, 0)
 TitleBox.Position = UDim2.new(0, 0, 0, 0)
 TitleBox.Text = "TOU HUB | กล้ามเนื้อตำนาน"
-TitleBox.ClearTextOnFocus = false
+TitleBox.Active = true
 Instance.new("UICorner", TitleBox)
 
 -- 🎨 จุดตกแต่ง
@@ -241,6 +255,7 @@ local MainPage = createTabPage("MainPage")
 local StatsPage = createTabPage("StatsPage")
 local FarmPage = createTabPage("FarmPage")
 local RollPage = createTabPage("RollPage")
+local SettingsPage = createTabPage("SettingsPage") -- ✏️ [แก้ไขเพิ่มเติม] สร้างหน้าตั้งค่า
 
 MainPage.Visible = true -- เปิดหน้าหลักเป็น Default
 
@@ -249,6 +264,7 @@ local function switchTab(targetPage)
     StatsPage.Visible = false
     FarmPage.Visible = false
     RollPage.Visible = false
+    SettingsPage.Visible = false -- ✏️ [แก้ไขเพิ่มเติม] ซ่อนหน้าตั้งค่า
     targetPage.Visible = true
 end
 
@@ -256,6 +272,7 @@ BtnMain.MouseButton1Click:Connect(function() switchTab(MainPage) end)
 BtnStats.MouseButton1Click:Connect(function() switchTab(StatsPage) end)
 BtnFarm.MouseButton1Click:Connect(function() switchTab(FarmPage) end)
 BtnRoll.MouseButton1Click:Connect(function() switchTab(RollPage) end)
+BtnSettings.MouseButton1Click:Connect(function() switchTab(SettingsPage) end) -- ✏️ [แก้ไขเพิ่มเติม] สลับมาหน้าตั้งค่า
 
 -- ════════ UI HELPERS FOR COMPONENTS ════════
 local function addToggle(parent, text, defaultState, callback)
@@ -394,6 +411,52 @@ local function addToolSelector(parent, labelText, options, defaultOption, callba
     return frame
 end
 
+-- ✏️ [แก้ไขเพิ่มเติม] ฟังก์ชั่นสร้าง UI สำหรับเลือกผู้เล่นที่มีในเซิร์ฟเวอร์
+local function addPlayerSelector(parent, labelText, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 45)
+    frame.BackgroundColor3 = Color3.fromRGB(85, 10, 10)
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
+    Instance.new("UICorner", frame)
+
+    local lbl = Instance.new("TextLabel", frame)
+    lbl.Size = UDim2.new(0.4, 0, 1, 0)
+    lbl.Position = UDim2.new(0.03, 0, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Text = labelText
+    lbl.TextSize = 13
+    lbl.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+
+    local btn = Instance.new("TextButton", frame)
+    btn.Size = UDim2.new(0.53, 0, 0.7, 0)
+    btn.Position = UDim2.new(0.44, 0, 0.15, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(160, 20, 20)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = LocalPlayer.Name .. " 🔽"
+    btn.TextSize = 12
+    btn.FontFace = Font.new("rbxasset://fonts/families/SourceSansPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    btn.BorderSizePixel = 0
+    Instance.new("UICorner", btn)
+
+    local playerIndex = 1
+
+    btn.MouseButton1Click:Connect(function()
+        local playerList = Players:GetPlayers()
+        if #playerList == 0 then return end
+        playerIndex = playerIndex % #playerList + 1
+        local selectedPlayer = playerList[playerIndex]
+        if selectedPlayer then
+            btn.Text = selectedPlayer.Name .. " 🔽"
+            callback(selectedPlayer)
+        end
+    end)
+
+    return frame
+end
+
 -- ════════ REMOTES & BACKEND SERVICES ════════
 local openCrystalRemote = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("openCrystalRemote")
 local sellPetEvent = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("sellPetEvent")
@@ -419,7 +482,6 @@ local EVOLVE_30 = {Target="Darkstar Hunter", Need=5, Enabled=false}
 local EVOLVE_15 = {Target="Infernal Dragon", Need=5, Enabled=false}
 local EVOLVE_150 = {Target="Apex Overlord", Need=5, Enabled=false}
 
--- ✏️ [แก้ไขเพิ่มเติม] ป้องกัน Error จากการโหลด Folder ในเป้
 local petsFolderObj = LocalPlayer:WaitForChild("petsFolder", 10)
 local powerUpsFolderObj = LocalPlayer:WaitForChild("powerUpsFolder", 10)
 
@@ -442,7 +504,6 @@ local AURA_FOLDERS = powerUpsFolderObj and {
 local running30, running15, running150 = false, false, false
 local sellConn30, sellConn15, sellConn150 = nil, nil, nil
 local lastScan30, lastScan15, lastScan150 = 0, 0, 0
-local sellTitan = false
 local evolving = false
 
 local farmEnabled = false
@@ -456,7 +517,6 @@ local targetRebirths = 0
 local useRebirthTarget = false
 
 -- ════════ HELPERS ════════
--- ✏️ [แก้ไขเพิ่มเติม] ครอบ pcall เช็คความปลอดภัยกัน nil call จาก Executor
 local function findNil(name)
     if typeof(getnilinstances) ~= "function" then return nil end
     local success, instances = pcall(getnilinstances)
@@ -507,9 +567,11 @@ end
 
 local function scan30() for n,_ in pairs(SELL_PETS_30) do sellPet(n) end for n,_ in pairs(SELL_AURAS_30) do sellAura(n) end end
 local function scan15() for n,id in pairs(SELL_PETS_15) do sellPetDbg(n,id) end for n,id in pairs(SELL_AURAS_15) do sellAuraDbg(n,id) end end
+
+-- ✏️ [แก้ไขเพิ่มเติม] ปรับ scan150 ให้ลบ Titan Reactor อัตโนมัติทันที
 local function scan150()
     for n,id in pairs(SELL_PETS_150) do sellPetDbg(n,id) end
-    if sellTitan then sellPetDbg(TITAN_REACTOR.Name, TITAN_REACTOR.DebugId) end
+    sellPetDbg(TITAN_REACTOR.Name, TITAN_REACTOR.DebugId)
 end
 
 local function countPet(name)
@@ -618,7 +680,8 @@ for _, f in ipairs(PET_FOLDERS) do
             if SELL_PETS_30[c.Name] and running30 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
             if SELL_PETS_15[c.Name] and running15 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
             if SELL_PETS_150[c.Name] and running150 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
-            if sellTitan and c.Name == TITAN_REACTOR.Name and running150 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+            -- ✏️ [แก้ไขเพิ่มเติม] ลบ Titan Reactor ทันทีแบบไม่ต้องใช้เงื่อนไขปุ่มกด
+            if c.Name == TITAN_REACTOR.Name and running150 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
             if c.Name == EVOLVE_30.Target then task.delay(0.3, function() tryEvolve(EVOLVE_30) end) end
             if c.Name == EVOLVE_15.Target then task.delay(0.3, function() tryEvolve(EVOLVE_15) end) end
             if c.Name == EVOLVE_150.Target then task.delay(0.3, function() tryEvolve(EVOLVE_150) end) end
@@ -743,19 +806,21 @@ local function renderStatsOnGUI(player)
     )
 end
 
-local selectedTargetName = LocalPlayer.Name
+-- ✏️ [แก้ไขเพิ่มเติม] เปลี่ยนระบบกรอกชื่อเป็น Dropdown เลือกผู้เล่นที่มีอยู่ในเซิร์ฟเวอร์
+local selectedTargetPlayer = LocalPlayer
 
-addTextbox(StatsPage, "🔍 ชื่อผู้เล่นเป้าหมาย", LocalPlayer.Name, function(txt)
-    selectedTargetName = txt
+addPlayerSelector(StatsPage, "👤 เลือกผู้เล่น", function(playerObj)
+    selectedTargetPlayer = playerObj
 end)
 
 addButton(StatsPage, "👤 ดูข้อมูลตัวเอง", function()
     renderStatsOnGUI(LocalPlayer)
 end)
 
-addButton(StatsPage, "🔍 ดูข้อมูลผู้เล่นเป้าหมาย", function()
-    local target = Players:FindFirstChild(selectedTargetName)
-    if target then renderStatsOnGUI(target) end
+addButton(StatsPage, "🔍 ดูข้อมูลผู้เล่นที่เลือก", function()
+    if selectedTargetPlayer then
+        renderStatsOnGUI(selectedTargetPlayer)
+    end
 end)
 
 -- ════════ POPULATING TAB 3: ฟาม (FARM & REBIRTH) ════════
@@ -808,10 +873,6 @@ addToggle(RollPage, "▶ เปิดสุ่ม รี 30 (Galaxy)", false, fu
     end
 end)
 
-addToggle(RollPage, "☑️ Auto Evolve Darkstar Hunter", false, function(state)
-    EVOLVE_30.Enabled = state
-end)
-
 addToggle(RollPage, "▶ เปิดสุ่ม รี 15 (Inferno)", false, function(state)
     running15 = state
     if running15 then
@@ -825,13 +886,8 @@ addToggle(RollPage, "▶ เปิดสุ่ม รี 15 (Inferno)", false, f
             end
         end)
     else
-        -- ✏️ [แก้ไขจุด Error] ลบคำว่า 'me' ที่พิมพ์เกินออก แก้คำสั่งให้ถูกต้อง
         if sellConn15 then sellConn15:Disconnect() sellConn15 = nil end
     end
-end)
-
-addToggle(RollPage, "☑️ Auto Evolve Infernal Dragon", false, function(state)
-    EVOLVE_15.Enabled = state
 end)
 
 addToggle(RollPage, "▶ เปิดสุ่ม รี 150 (Industrial)", false, function(state)
@@ -851,12 +907,12 @@ addToggle(RollPage, "▶ เปิดสุ่ม รี 150 (Industrial)", fals
     end
 end)
 
-addToggle(RollPage, "☑️ ลบ Titan Reactor", false, function(state)
-    sellTitan = state
-end)
-
-addToggle(RollPage, "☑️ Auto Evolve Apex Overlord", false, function(state)
+-- ════════ POPULATING TAB 5: ตั้งค่า (SETTINGS MENU) ════════
+-- ✏️ [แก้ไขเพิ่มเติม] เพิ่มหน้าตั้งค่าและระบบ Auto Evolve รวมสำหรับตู้ 30, 15, 150
+addToggle(SettingsPage, "🔄 Auto Evolve อัตโนมัติ (ทุกตู้)", false, function(state)
+    EVOLVE_30.Enabled = state
+    EVOLVE_15.Enabled = state
     EVOLVE_150.Enabled = state
 end)
 
-print("😈 TOU HUB Custom GUI Edition Error Fixed Perfectly!")
+print("😈 TOU HUB Custom GUI Edition Updated Successfully!")
