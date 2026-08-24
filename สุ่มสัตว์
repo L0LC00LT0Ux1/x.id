@@ -583,8 +583,10 @@ local function executeScript()
     local CRYSTAL_30 = "Galaxy Oracle Crystal"
     local CRYSTAL_15 = "Inferno Crystal"
     local CRYSTAL_150 = "Industrial Crystal"
+    -- [เพิ่มใหม่: Config ตู้รี 60]
+    local CRYSTAL_60 = "Jungle Crystal"
     local BULK_AMOUNT = 10
-    local DELAY_30, DELAY_15, DELAY_150 = 0.3, 0.3, 0.5
+    local DELAY_30, DELAY_15, DELAY_150, DELAY_60 = 0.3, 0.3, 0.5, 0.5
 
     local SELL_PETS_30 = {["Eternal Strike Leviathan"]=true,["Lightning Strike Phantom"]=true}
     local SELL_AURAS_30 = {["Ultra Inferno"]=true,["Azure Tundra"]=true}
@@ -593,9 +595,19 @@ local function executeScript()
     local SELL_PETS_150 = {["Plasma Ravager"]="1_315848",["Reactor Beast"]="1_321232",["Volt Talon"]="1_321250",["Core Pup"]="1_321241"}
     local TITAN_REACTOR = {Name="Titan Reactor", DebugId="1_433530"}
 
+    -- [เพิ่มใหม่: ข้อมูลสัตว์และอ่อร่าที่ต้องลบ สำหรับตู้รี 60]
+    local SELL_PETS_60 = {["Golden Viking"]="1_2233962", ["Muscle Sensei"]="1_2233971"}
+    local SELL_AURAS_60 = {["Grand Supernova"]="1_2234849", ["Eternal Megastrike"]="1_2238862", ["Entropic Blast"]="1_2233999"}
+
     local EVOLVE_30 = {Target="Darkstar Hunter", Need=5, Enabled=false}
     local EVOLVE_15 = {Target="Infernal Dragon", Need=5, Enabled=false}
     local EVOLVE_150 = {Target="Apex Overlord", Need=5, Enabled=false}
+    -- [เพิ่มใหม่: Auto Evolve สำหรับตู้รี 60]
+    local EVOLVE_60 = {Target="Neon Guardian", Need=5, Enabled=false}
+
+    -- [เพิ่มใหม่: ตารางเก็บสถานะยกเว้นการขาย (true = ยกเว้น/ไม่ขาย)]
+    local EXCLUDE_PETS = {}
+    local EXCLUDE_AURAS = {}
 
     local petsFolderObj = LocalPlayer:WaitForChild("petsFolder", 10)
     local powerUpsFolderObj = LocalPlayer:WaitForChild("powerUpsFolder", 10)
@@ -617,8 +629,10 @@ local function executeScript()
     } or {}
 
     local running30, running15, running150 = false, false, false
-    local sellConn30, sellConn15, sellConn150 = nil, nil, nil
-    local lastScan30, lastScan15, lastScan150 = 0, 0, 0
+    -- [เพิ่มใหม่: ตัวแปรทำงานของตู้รี 60]
+    local running60 = false
+    local sellConn30, sellConn15, sellConn150, sellConn60 = nil, nil, nil, nil
+    local lastScan30, lastScan15, lastScan150, lastScan60 = 0, 0, 0, 0
     local evolving = false
 
     local farmEnabled = false
@@ -688,12 +702,26 @@ local function executeScript()
         local n = findNilDbg(name, id) if n then sellPowerUpEvent:FireServer("sellPowerUp", n) return true end return false
     end
 
-    local function scan30() for n,_ in pairs(SELL_PETS_30) do sellPet(n) end for n,_ in pairs(SELL_AURAS_30) do sellAura(n) end end
-    local function scan15() for n,id in pairs(SELL_PETS_15) do sellPetDbg(n,id) end for n,id in pairs(SELL_AURAS_15) do sellAuraDbg(n,id) end end
+    -- [แก้ไข: ปรับปรุงฟังก์ชั่นสแกนลบ ให้ตรวจสอบระบบยกเว้น (EXCLUDE) ก่อนสั่งลบ]
+    local function scan30()
+        for n,_ in pairs(SELL_PETS_30) do if not EXCLUDE_PETS[n] then sellPet(n) end end
+        for n,_ in pairs(SELL_AURAS_30) do if not EXCLUDE_AURAS[n] then sellAura(n) end end
+    end
+
+    local function scan15()
+        for n,id in pairs(SELL_PETS_15) do if not EXCLUDE_PETS[n] then sellPetDbg(n,id) end end
+        for n,id in pairs(SELL_AURAS_15) do if not EXCLUDE_AURAS[n] then sellAuraDbg(n,id) end end
+    end
 
     local function scan150()
-        for n,id in pairs(SELL_PETS_150) do sellPetDbg(n,id) end
-        sellPetDbg(TITAN_REACTOR.Name, TITAN_REACTOR.DebugId)
+        for n,id in pairs(SELL_PETS_150) do if not EXCLUDE_PETS[n] then sellPetDbg(n,id) end end
+        if not EXCLUDE_PETS[TITAN_REACTOR.Name] then sellPetDbg(TITAN_REACTOR.Name, TITAN_REACTOR.DebugId) end
+    end
+
+    -- [เพิ่มใหม่: ฟังก์ชั่นสแกนลบสำหรับตู้รี 60]
+    local function scan60()
+        for n,id in pairs(SELL_PETS_60) do if not EXCLUDE_PETS[n] then sellPetDbg(n,id) end end
+        for n,id in pairs(SELL_AURAS_60) do if not EXCLUDE_AURAS[n] then sellAuraDbg(n,id) end end
     end
 
     local function countPet(name)
@@ -734,6 +762,204 @@ local function executeScript()
         local ok = pcall(function() openCrystalRemote:InvokeServer("openCrystalBulk", CRYSTAL_150, BULK_AMOUNT) end)
         if ok then task.delay(0.3, function() scan150() tryEvolve(EVOLVE_150) end) end
         return ok
+    end
+
+    -- [เพิ่มใหม่: ฟังก์ชั่นสุ่มตู้รี 60]
+    local function roll60()
+        local ok = pcall(function() openCrystalRemote:InvokeServer("openCrystalBulk", CRYSTAL_60, BULK_AMOUNT) end)
+        if ok then task.delay(0.3, function() scan60() tryEvolve(EVOLVE_60) end) end
+        return ok
+    end
+
+    -- [เพิ่มใหม่: หน้าต่าง GUI สำหรับจัดการการยกเว้นสัตว์ และ อ่อร่า (Exception System)]
+    local function openExceptionModal(boxTitle, petsDict, aurasDict)
+        local existing = ScreenGui:FindFirstChild("ExceptionModalFrame")
+        if existing then existing:Destroy() end
+
+        local modal = Instance.new("Frame")
+        modal.Name = "ExceptionModalFrame"
+        modal.Parent = ScreenGui
+        modal.Size = UDim2.new(0, 320, 0, 360)
+        modal.Position = UDim2.new(0.5, -160, 0.5, -180)
+        modal.BackgroundColor3 = Color3.fromRGB(35, 10, 10)
+        modal.BorderSizePixel = 0
+        modal.ZIndex = 50
+        modal.Active = true
+        modal.Draggable = true
+        Instance.new("UICorner", modal).CornerRadius = UDim.new(0, 10)
+
+        local stroke = Instance.new("UIStroke", modal)
+        stroke.Color = Color3.fromRGB(200, 40, 40)
+        stroke.Thickness = 2
+
+        local topBar = Instance.new("TextLabel", modal)
+        topBar.Size = UDim2.new(1, 0, 0, 35)
+        topBar.BackgroundColor3 = Color3.fromRGB(90, 15, 15)
+        topBar.Text = "🛡️ ตั้งค่ายกเว้น: " .. boxTitle
+        topBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+        topBar.Font = Enum.Font.SourceSansBold
+        topBar.TextSize = 15
+        topBar.ZIndex = 51
+        Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 10)
+
+        local closeBtn = Instance.new("TextButton", modal)
+        closeBtn.Size = UDim2.new(0, 26, 0, 26)
+        closeBtn.Position = UDim2.new(1, -30, 0, 4)
+        closeBtn.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
+        closeBtn.Text = "X"
+        closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        closeBtn.Font = Enum.Font.SourceSansBold
+        closeBtn.TextSize = 14
+        closeBtn.ZIndex = 52
+        Instance.new("UICorner", closeBtn)
+        closeBtn.MouseButton1Click:Connect(function() modal:Destroy() end)
+
+        local scroll = Instance.new("ScrollingFrame", modal)
+        scroll.Size = UDim2.new(0.92, 0, 0.85, -10)
+        scroll.Position = UDim2.new(0.04, 0, 0.12, 10)
+        scroll.BackgroundTransparency = 1
+        scroll.BorderSizePixel = 0
+        scroll.ScrollBarThickness = 4
+        scroll.ZIndex = 51
+
+        local layout = Instance.new("UIListLayout", scroll)
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0, 6)
+        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+        end)
+
+        -- 🐾 หมวดหมู่สัตว์
+        local petHeader = Instance.new("TextLabel", scroll)
+        petHeader.Size = UDim2.new(1, 0, 0, 25)
+        petHeader.BackgroundColor3 = Color3.fromRGB(60, 10, 10)
+        petHeader.Text = "🐾 สัตว์ (เปิด = ไม่ลบ/ยกเว้น)"
+        petHeader.TextColor3 = Color3.fromRGB(255, 200, 100)
+        petHeader.Font = Enum.Font.SourceSansBold
+        petHeader.TextSize = 13
+        petHeader.ZIndex = 52
+        Instance.new("UICorner", petHeader)
+
+        local petCount = 0
+        for petName, _ in pairs(petsDict) do
+            petCount = petCount + 1
+            local row = Instance.new("Frame", scroll)
+            row.Size = UDim2.new(1, 0, 0, 32)
+            row.BackgroundColor3 = Color3.fromRGB(50, 8, 8)
+            row.BorderSizePixel = 0
+            row.ZIndex = 52
+            Instance.new("UICorner", row)
+
+            local lbl = Instance.new("TextLabel", row)
+            lbl.Size = UDim2.new(0.65, 0, 1, 0)
+            lbl.Position = UDim2.new(0.03, 0, 0, 0)
+            lbl.BackgroundTransparency = 1
+            lbl.Text = petName
+            lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.Font = Enum.Font.SourceSans
+            lbl.TextSize = 13
+            lbl.ZIndex = 53
+
+            local tog = Instance.new("TextButton", row)
+            tog.Size = UDim2.new(0.28, 0, 0.75, 0)
+            tog.Position = UDim2.new(0.69, 0, 0.12, 0)
+            tog.ZIndex = 53
+            Instance.new("UICorner", tog)
+
+            local isExcluded = EXCLUDE_PETS[petName] or false
+            local function updateTog()
+                if isExcluded then
+                    tog.Text = "🛡️ ยกเว้น"
+                    tog.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+                else
+                    tog.Text = "🗑️ ลบปกติ"
+                    tog.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+                end
+            end
+            updateTog()
+
+            tog.MouseButton1Click:Connect(function()
+                isExcluded = not isExcluded
+                EXCLUDE_PETS[petName] = isExcluded
+                updateTog()
+            end)
+        end
+        if petCount == 0 then
+            local emptyLabel = Instance.new("TextLabel", scroll)
+            emptyLabel.Size = UDim2.new(1, 0, 0, 20)
+            emptyLabel.BackgroundTransparency = 1
+            emptyLabel.Text = "- ไม่มีรายการสัตว์ -"
+            emptyLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+            emptyLabel.TextSize = 12
+            emptyLabel.ZIndex = 52
+        end
+
+        -- 🌟 หมวดหมู่อ่อร่า
+        local auraHeader = Instance.new("TextLabel", scroll)
+        auraHeader.Size = UDim2.new(1, 0, 0, 25)
+        auraHeader.BackgroundColor3 = Color3.fromRGB(60, 10, 10)
+        auraHeader.Text = "🌟 อ่อร่า (เปิด = ไม่ลบ/ยกเว้น)"
+        auraHeader.TextColor3 = Color3.fromRGB(255, 200, 100)
+        auraHeader.Font = Enum.Font.SourceSansBold
+        auraHeader.TextSize = 13
+        auraHeader.ZIndex = 52
+        Instance.new("UICorner", auraHeader)
+
+        local auraCount = 0
+        for auraName, _ in pairs(aurasDict) do
+            auraCount = auraCount + 1
+            local row = Instance.new("Frame", scroll)
+            row.Size = UDim2.new(1, 0, 0, 32)
+            row.BackgroundColor3 = Color3.fromRGB(50, 8, 8)
+            row.BorderSizePixel = 0
+            row.ZIndex = 52
+            Instance.new("UICorner", row)
+
+            local lbl = Instance.new("TextLabel", row)
+            lbl.Size = UDim2.new(0.65, 0, 1, 0)
+            lbl.Position = UDim2.new(0.03, 0, 0, 0)
+            lbl.BackgroundTransparency = 1
+            lbl.Text = auraName
+            lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.Font = Enum.Font.SourceSans
+            lbl.TextSize = 13
+            lbl.ZIndex = 53
+
+            local tog = Instance.new("TextButton", row)
+            tog.Size = UDim2.new(0.28, 0, 0.75, 0)
+            tog.Position = UDim2.new(0.69, 0, 0.12, 0)
+            tog.ZIndex = 53
+            Instance.new("UICorner", tog)
+
+            local isExcluded = EXCLUDE_AURAS[auraName] or false
+            local function updateTog()
+                if isExcluded then
+                    tog.Text = "🛡️ ยกเว้น"
+                    tog.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+                else
+                    tog.Text = "🗑️ ลบปกติ"
+                    tog.BackgroundColor3 = Color3.fromRGB(231, 76, 60)
+                end
+            end
+            updateTog()
+
+            tog.MouseButton1Click:Connect(function()
+                isExcluded = not isExcluded
+                EXCLUDE_AURAS[auraName] = isExcluded
+                updateTog()
+            end)
+        end
+        if auraCount == 0 then
+            local emptyLabel = Instance.new("TextLabel", scroll)
+            emptyLabel.Size = UDim2.new(1, 0, 0, 20)
+            emptyLabel.BackgroundTransparency = 1
+            emptyLabel.Text = "- ไม่มีรายการอ่อร่า -"
+            emptyLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+            emptyLabel.TextSize = 12
+            emptyLabel.ZIndex = 52
+        end
     end
 
     -- ════════ FARMING & REBIRTH LOGIC ════════
@@ -874,16 +1100,22 @@ local function executeScript()
     end)
 
     -- ════════ AUTO-SELL ON CHILD ADDED ════════
+    -- [แก้ไข: เพิ่มการเช็คตู้รี 60 และการยกเว้นในระบบตรวจจับ ChildAdded]
     for _, f in ipairs(PET_FOLDERS) do
         if f then
             f.ChildAdded:Connect(function(c)
-                if SELL_PETS_30[c.Name] and running30 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
-                if SELL_PETS_15[c.Name] and running15 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
-                if SELL_PETS_150[c.Name] and running150 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
-                if c.Name == TITAN_REACTOR.Name and running150 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+                if SELL_PETS_30[c.Name] and running30 and not EXCLUDE_PETS[c.Name] then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+                if SELL_PETS_15[c.Name] and running15 and not EXCLUDE_PETS[c.Name] then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+                if SELL_PETS_150[c.Name] and running150 and not EXCLUDE_PETS[c.Name] then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+                if c.Name == TITAN_REACTOR.Name and running150 and not EXCLUDE_PETS[c.Name] then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+                
+                -- ตู้รี 60
+                if SELL_PETS_60[c.Name] and running60 and not EXCLUDE_PETS[c.Name] then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+
                 if c.Name == EVOLVE_30.Target then task.delay(0.3, function() tryEvolve(EVOLVE_30) end) end
                 if c.Name == EVOLVE_15.Target then task.delay(0.3, function() tryEvolve(EVOLVE_15) end) end
                 if c.Name == EVOLVE_150.Target then task.delay(0.3, function() tryEvolve(EVOLVE_150) end) end
+                if c.Name == EVOLVE_60.Target then task.delay(0.3, function() tryEvolve(EVOLVE_60) end) end
             end)
         end
     end
@@ -891,8 +1123,10 @@ local function executeScript()
     for _, f in ipairs(AURA_FOLDERS) do
         if f then
             f.ChildAdded:Connect(function(c)
-                if SELL_AURAS_30[c.Name] and running30 then task.wait(0.1) sellPowerUpEvent:FireServer("sellPowerUp", c) end
-                if SELL_AURAS_15[c.Name] and running15 then task.wait(0.1) sellPowerUpEvent:FireServer("sellPowerUp", c) end
+                if SELL_AURAS_30[c.Name] and running30 and not EXCLUDE_AURAS[c.Name] then task.wait(0.1) sellPowerUpEvent:FireServer("sellPowerUp", c) end
+                if SELL_AURAS_15[c.Name] and running15 and not EXCLUDE_AURAS[c.Name] then task.wait(0.1) sellPowerUpEvent:FireServer("sellPowerUp", c) end
+                -- ตู้รี 60
+                if SELL_AURAS_60[c.Name] and running60 and not EXCLUDE_AURAS[c.Name] then task.wait(0.1) sellPowerUpEvent:FireServer("sellPowerUp", c) end
             end)
         end
     end
@@ -1054,6 +1288,9 @@ local function executeScript()
     end)
 
     -- ════════ POPULATING TAB 4: สุ่มสัตว์ ════════
+    -- [แก้ไข: เพิ่มปุ่มยกเว้นสำหรับทุกตู้ และเพิ่มปุ่ม สุ่มตู้รี 60]
+
+    -- ตู้รี 30
     addToggle(RollPage, "▶ เปิดสุ่ม รี 30 (Galaxy)", false, function(state)
         running30 = state
         if running30 then
@@ -1070,7 +1307,11 @@ local function executeScript()
             if sellConn30 then sellConn30:Disconnect() sellConn30 = nil end
         end
     end)
+    addButton(RollPage, "🛡️ ตั้งค่ายกเว้น ไม่ขาย (ตู้รี 30)", function()
+        openExceptionModal("ตู้รี 30 (Galaxy)", SELL_PETS_30, SELL_AURAS_30)
+    end)
 
+    -- ตู้รี 15
     addToggle(RollPage, "▶ เปิดสุ่ม รี 15 (Inferno)", false, function(state)
         running15 = state
         if running15 then
@@ -1087,7 +1328,11 @@ local function executeScript()
             if sellConn15 then sellConn15:Disconnect() sellConn15 = nil end
         end
     end)
+    addButton(RollPage, "🛡️ ตั้งค่ายกเว้น ไม่ขาย (ตู้รี 15)", function()
+        openExceptionModal("ตู้รี 15 (Inferno)", SELL_PETS_15, SELL_AURAS_15)
+    end)
 
+    -- ตู้รี 150
     addToggle(RollPage, "▶ เปิดสุ่ม รี 150 (Industrial)", false, function(state)
         running150 = state
         if running150 then
@@ -1104,12 +1349,40 @@ local function executeScript()
             if sellConn150 then sellConn150:Disconnect() sellConn150 = nil end
         end
     end)
+    addButton(RollPage, "🛡️ ตั้งค่ายกเว้น ไม่ขาย (ตู้รี 150)", function()
+        local pets150WithTitan = {}
+        for k,v in pairs(SELL_PETS_150) do pets150WithTitan[k] = v end
+        pets150WithTitan[TITAN_REACTOR.Name] = TITAN_REACTOR.DebugId
+        openExceptionModal("ตู้รี 150 (Industrial)", pets150WithTitan, {})
+    end)
+
+    -- [เพิ่มใหม่: ตู้รี 60 (Jungle Crystal)]
+    addToggle(RollPage, "▶ เปิดสุ่ม รี 60 (Jungle)", false, function(state)
+        running60 = state
+        if running60 then
+            scan60() tryEvolve(EVOLVE_60)
+            task.spawn(function()
+                while running60 do roll60() task.wait(DELAY_60) end
+            end)
+            sellConn60 = RunService.Heartbeat:Connect(function()
+                if running60 and (os.clock() - lastScan60) > 0.3 then
+                    lastScan60 = os.clock() scan60() tryEvolve(EVOLVE_60)
+                end
+            end)
+        else
+            if sellConn60 then sellConn60:Disconnect() sellConn60 = nil end
+        end
+    end)
+    addButton(RollPage, "🛡️ ตั้งค่ายกเว้น ไม่ขาย (ตู้รี 60)", function()
+        openExceptionModal("ตู้รี 60 (Jungle)", SELL_PETS_60, SELL_AURAS_60)
+    end)
 
     -- ════════ POPULATING TAB 5: ตั้งค่า ════════
     addToggle(SettingsPage, "🔄 Auto Evolve อัตโนมัติ (ทุกตู้)", false, function(state)
         EVOLVE_30.Enabled = state
         EVOLVE_15.Enabled = state
         EVOLVE_150.Enabled = state
+        EVOLVE_60.Enabled = state -- [เพิ่มใหม่]
     end)
 
     -- ════════ POPULATING TAB 6: เพิ่มเติม ════════
