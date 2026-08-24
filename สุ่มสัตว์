@@ -1,228 +1,312 @@
 --[=[
- d888b  db    db d888888b      .d888b.      db      db    db  .d8b.  
-88' Y8b 88    88   `88'        VP  `8D      88      88    88 d8' `8b 
-88      88    88    88            odD'      88      88    88 88ooo88 
-88  ooo 88    88    88          .88'        88      88    88 88~~~88 
-88. \~8\~ 88b  d88   .88.        j88.         88booo. 88b  d88 88   88    @uniquadev
- Y888P  \~Y8888P' Y888888P      888888D      Y88888P \~Y8888P' YP   YP  CONVERTER 
-
-designed using localmaze gui creator + Key System
+ TOU HUB | KEY SYSTEM (Dark Theme + Webhook + Effects)
 ]=]
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local SoundService = game:GetService("SoundService")
 local LocalPlayer = Players.LocalPlayer
-local StarterGui = game:GetService("StarterGui")
 
--- 🔒 Whitelist (ชื่อคนที่ข้ามหน้าใส่ Key)
+-- 🔒 Whitelist
 local WHITELIST = {
     ["HGVGGGG61"] = true,
     ["KlDC00I_333"] = true,
-    -- เพิ่มชื่อได้เรื่อยๆ เช่น
-    -- ["ชื่อคนที่3"] = true,
+    -- เพิ่มชื่อได้เลย
 }
 
--- 🔑 Key และ URL สคริปต์หลัก
+-- 🔑 Config
 local CORRECT_KEY = "TOUx1_HUB_KEY"
-local SCRIPT_URL = "https://pastefy.app/Vzj9W4eO/raw"
+local SCRIPT_URL = "https://pastefy.app/hJd8vEeC/raw"
 local DISCORD_LINK = "https://discord.gg/dTz2njT9fZ"
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1539980287264559134/B3I_P06MBIznj9_4wyJd87Wj-EhPOSITpWhCLYcNijS8z5V4OxuGdbtvA0Qb04vhTw1R"
 
--- 🚀 โหลดและรันสคริปต์หลัก
-local function executeScript()
-    local success, scriptContent = pcall(function()
-        return game:HttpGet(SCRIPT_URL)
-    end)
-    
-    if success and scriptContent then
-        loadstring(scriptContent)()
-    else
-        warn("⚠️ ไม่สามารถดึงข้อมูลจาก Pastefy ได้!")
+-- 🔊 เสียง (Free Roblox Assets)
+local Sounds = {
+    Click   = "rbxassetid://6895079853",
+    Success = "rbxassetid://4590657391",
+    Error   = "rbxassetid://4067831917",
+    Open    = "rbxassetid://6895079853",
+}
+
+local function playSound(id, volume)
+    local s = Instance.new("Sound")
+    s.SoundId = id
+    s.Volume = volume or 0.6
+    s.Parent = SoundService
+    s:Play()
+    game:GetService("Debris"):AddItem(s, 3)
+end
+
+-- 📡 ส่ง Webhook
+local function sendWebhook(title, description, color)
+    local data = {
+        username = "TOU HUB | Key System",
+        embeds = {{
+            title = title,
+            description = description,
+            color = color,
+            footer = { text = "TOU HUB • " .. os.date("%d/%m/%Y %H:%M:%S") },
+            timestamp = DateTime.now():ToIsoDate()
+        }}
+    }
+
+    local body = HttpService:JSONEncode(data)
+
+    local req = (syn and syn.request) or (http and http.request) or request or http_request
+    if req then
+        pcall(function()
+            req({
+                Url = WEBHOOK_URL,
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = body
+            })
+        end)
     end
 end
 
--- ถ้าอยู่ใน Whitelist → รันทันที
+-- 🚀 รันสคริปต์หลัก
+local function executeScript()
+    local success, content = pcall(function()
+        return game:HttpGet(SCRIPT_URL)
+    end)
+    if success and content then
+        loadstring(content)()
+    else
+        warn("⚠️ ไม่สามารถโหลดสคริปต์หลักได้")
+    end
+end
+
+-- ถ้าอยู่ใน Whitelist → รันเลย + แจ้ง Webhook
 if LocalPlayer and WHITELIST[LocalPlayer.Name] then
+    sendWebhook(
+        "✅ Whitelist Access",
+        "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** อยู่ใน Whitelist (ข้าม Key)",
+        5763719 -- เขียว
+    )
     executeScript()
     return
 end
 
 -- ==================== สร้าง GUI ====================
-local LMG2L = {}
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TOU_HUB_KeySystem"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- ScreenGui
-LMG2L["ScreenGui_1"] = Instance.new("ScreenGui")
-LMG2L["ScreenGui_1"].Name = "TOU_HUB_KeySystem"
-LMG2L["ScreenGui_1"].ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-LMG2L["ScreenGui_1"].ResetOnSpawn = false
-
--- ป้องกันการตรวจจับ (รองรับ executor หลายตัว)
 if gethui then
-    LMG2L["ScreenGui_1"].Parent = gethui()
+    ScreenGui.Parent = gethui()
 elseif syn and syn.protect_gui then
-    syn.protect_gui(LMG2L["ScreenGui_1"])
-    LMG2L["ScreenGui_1"].Parent = CoreGui
+    syn.protect_gui(ScreenGui)
+    ScreenGui.Parent = CoreGui
 else
-    LMG2L["ScreenGui_1"].Parent = CoreGui
+    ScreenGui.Parent = CoreGui
 end
 
--- Frame หลัก
-LMG2L["Frame_2"] = Instance.new("Frame", LMG2L["ScreenGui_1"])
-LMG2L["Frame_2"].BorderSizePixel = 0
-LMG2L["Frame_2"].BackgroundColor3 = Color3.fromRGB(109, 0, 0)
-LMG2L["Frame_2"].Size = UDim2.new(0.33038, 0, 0.5374, 0)
-LMG2L["Frame_2"].Position = UDim2.new(0.27374, 0, 0.20322, 0)
-LMG2L["Frame_2"].Active = true
-LMG2L["Frame_2"].Draggable = true
+-- Main Frame
+local Main = Instance.new("Frame")
+Main.Name = "Main"
+Main.Parent = ScreenGui
+Main.BackgroundColor3 = Color3.fromRGB(18, 5, 5)
+Main.BorderSizePixel = 0
+Main.Size = UDim2.new(0, 0, 0, 0) -- เริ่มเล็กเพื่อทำ Scale
+Main.Position = UDim2.new(0.5, 0, 0.5, 0)
+Main.AnchorPoint = Vector2.new(0.5, 0.5)
+Main.Active = true
+Main.Draggable = true
 
-LMG2L["UICorner_3"] = Instance.new("UICorner", LMG2L["Frame_2"])
+local MainCorner = Instance.new("UICorner", Main)
+MainCorner.CornerRadius = UDim.new(0, 12)
 
--- Title
-LMG2L["TextLabel_4"] = Instance.new("TextLabel", LMG2L["Frame_2"])
-LMG2L["TextLabel_4"].BorderSizePixel = 0
-LMG2L["TextLabel_4"].TextSize = 25
-LMG2L["TextLabel_4"].BackgroundColor3 = Color3.fromRGB(50, 0, 0)
-LMG2L["TextLabel_4"].FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-LMG2L["TextLabel_4"].TextColor3 = Color3.fromRGB(255, 0, 0)
-LMG2L["TextLabel_4"].Size = UDim2.new(1, 0, 0.19328, 0)
-LMG2L["TextLabel_4"].Text = "TOU HUB | KEY"
+local MainStroke = Instance.new("UIStroke", Main)
+MainStroke.Color = Color3.fromRGB(140, 0, 0)
+MainStroke.Thickness = 2
+MainStroke.Transparency = 0.3
 
-LMG2L["UICorner_5"] = Instance.new("UICorner", LMG2L["TextLabel_4"])
+local MainGradient = Instance.new("UIGradient", Main)
+MainGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 5, 5)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 2, 2))
+}
+MainGradient.Rotation = 90
 
--- ช่องใส่ KEY (เดิมเป็น Frame ชื่อ ไว้ใส่KEY → เปลี่ยนเป็น TextBox)
-LMG2L["KeyInput"] = Instance.new("TextBox", LMG2L["Frame_2"])
-LMG2L["KeyInput"].Name = "ไว้ใส่KEY"
-LMG2L["KeyInput"].BorderSizePixel = 0
-LMG2L["KeyInput"].BackgroundColor3 = Color3.fromRGB(55, 2, 2)
-LMG2L["KeyInput"].Size = UDim2.new(0.69143, 0, 0.14286, 0)
-LMG2L["KeyInput"].Position = UDim2.new(0.14857, 0, 0.35294, 0)
-LMG2L["KeyInput"].Text = ""
-LMG2L["KeyInput"].PlaceholderText = "ใส่ KEY ที่นี่..."
-LMG2L["KeyInput"].TextColor3 = Color3.fromRGB(255, 255, 255)
-LMG2L["KeyInput"].PlaceholderColor3 = Color3.fromRGB(180, 100, 100)
-LMG2L["KeyInput"].TextSize = 16
-LMG2L["KeyInput"].Font = Enum.Font.SourceSans
-LMG2L["KeyInput"].ClearTextOnFocus = false
-LMG2L["KeyInput"].TextXAlignment = Enum.TextXAlignment.Center
+-- Title Bar
+local TitleBar = Instance.new("Frame", Main)
+TitleBar.Size = UDim2.new(1, 0, 0, 42)
+TitleBar.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
+TitleBar.BorderSizePixel = 0
 
-local KeyCorner = Instance.new("UICorner", LMG2L["KeyInput"])
-KeyCorner.CornerRadius = UDim.new(0, 6)
+local TitleCorner = Instance.new("UICorner", TitleBar)
+TitleCorner.CornerRadius = UDim.new(0, 12)
 
--- ปุ่ม Confirm
-LMG2L["TextButton_7"] = Instance.new("TextButton", LMG2L["Frame_2"])
-LMG2L["TextButton_7"].BorderSizePixel = 0
-LMG2L["TextButton_7"].TextSize = 20
-LMG2L["TextButton_7"].TextColor3 = Color3.fromRGB(255, 0, 0)
-LMG2L["TextButton_7"].BackgroundColor3 = Color3.fromRGB(186, 9, 9)
-LMG2L["TextButton_7"].FontFace = Font.new("rbxasset://fonts/families/Fondamento.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-LMG2L["TextButton_7"].Size = UDim2.new(0.21714, 0, 0.14286, 0)
-LMG2L["TextButton_7"].Text = "confirm"
-LMG2L["TextButton_7"].Position = UDim2.new(0.39429, 0, 0.57143, 0)
+local Title = Instance.new("TextLabel", TitleBar)
+Title.Size = UDim2.new(1, 0, 1, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "TOU HUB  |  KEY SYSTEM"
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 18
+Title.TextColor3 = Color3.fromRGB(255, 60, 60)
 
-local ConfirmCorner = Instance.new("UICorner", LMG2L["TextButton_7"])
-ConfirmCorner.CornerRadius = UDim.new(0, 6)
+-- Key Input
+local KeyBox = Instance.new("TextBox", Main)
+KeyBox.Name = "KeyInput"
+KeyBox.Size = UDim2.new(0.82, 0, 0, 42)
+KeyBox.Position = UDim2.new(0.09, 0, 0.32, 0)
+KeyBox.BackgroundColor3 = Color3.fromRGB(28, 6, 6)
+KeyBox.BorderSizePixel = 0
+KeyBox.Text = ""
+KeyBox.PlaceholderText = "ใส่ KEY ที่นี่..."
+KeyBox.PlaceholderColor3 = Color3.fromRGB(160, 70, 70)
+KeyBox.TextColor3 = Color3.fromRGB(255, 220, 220)
+KeyBox.TextSize = 16
+KeyBox.Font = Enum.Font.Gotham
+KeyBox.ClearTextOnFocus = false
+KeyBox.TextXAlignment = Enum.TextXAlignment.Center
 
--- Frame ด้านขวา (Discord)
-LMG2L["Frame_8"] = Instance.new("Frame", LMG2L["Frame_2"])
-LMG2L["Frame_8"].BorderSizePixel = 0
-LMG2L["Frame_8"].BackgroundColor3 = Color3.fromRGB(193, 50, 50)
-LMG2L["Frame_8"].Size = UDim2.new(0.42286, 0, 1, 0)
-LMG2L["Frame_8"].Position = UDim2.new(1.01143, 0, 0.0084, 0)
+local KeyCorner = Instance.new("UICorner", KeyBox)
+KeyCorner.CornerRadius = UDim.new(0, 8)
 
-LMG2L["UICorner_9"] = Instance.new("UICorner", LMG2L["Frame_8"])
+local KeyStroke = Instance.new("UIStroke", KeyBox)
+KeyStroke.Color = Color3.fromRGB(120, 20, 20)
+KeyStroke.Thickness = 1.5
 
--- TextBox หัวข้อติดต่อ
-LMG2L["TextBox_a"] = Instance.new("TextBox", LMG2L["Frame_8"])
-LMG2L["TextBox_a"].BorderSizePixel = 0
-LMG2L["TextBox_a"].TextSize = 15
-LMG2L["TextBox_a"].BackgroundColor3 = Color3.fromRGB(191, 22, 22)
-LMG2L["TextBox_a"].Size = UDim2.new(0.97297, 0, 0.19328, 0)
-LMG2L["TextBox_a"].Position = UDim2.new(0.01351, 0, 0, 0)
-LMG2L["TextBox_a"].Text = "ติดต่อ ซื้อได้ที่"
-LMG2L["TextBox_a"].TextEditable = false
-LMG2L["TextBox_a"].ClearTextOnFocus = false
+-- Confirm Button
+local Confirm = Instance.new("TextButton", Main)
+Confirm.Name = "Confirm"
+Confirm.Size = UDim2.new(0.42, 0, 0, 40)
+Confirm.Position = UDim2.new(0.29, 0, 0.58, 0)
+Confirm.BackgroundColor3 = Color3.fromRGB(160, 15, 15)
+Confirm.BorderSizePixel = 0
+Confirm.Text = "CONFIRM"
+Confirm.Font = Enum.Font.GothamBold
+Confirm.TextSize = 16
+Confirm.TextColor3 = Color3.fromRGB(255, 230, 230)
 
-LMG2L["UICorner_b"] = Instance.new("UICorner", LMG2L["TextBox_a"])
+local ConfirmCorner = Instance.new("UICorner", Confirm)
+ConfirmCorner.CornerRadius = UDim.new(0, 8)
 
--- ลิงก์ Discord
-LMG2L["ลิ้งดิส_c"] = Instance.new("TextLabel", LMG2L["Frame_8"])
-LMG2L["ลิ้งดิส_c"].TextWrapped = true
-LMG2L["ลิ้งดิส_c"].BorderSizePixel = 0
-LMG2L["ลิ้งดิส_c"].TextSize = 10
-LMG2L["ลิ้งดิส_c"].BackgroundColor3 = Color3.fromRGB(137, 17, 17)
-LMG2L["ลิ้งดิส_c"].Size = UDim2.new(0.97297, 0, 0.79832, 0)
-LMG2L["ลิ้งดิส_c"].Text = "กลุ่มดิส : " .. DISCORD_LINK
-LMG2L["ลิ้งดิส_c"].Name = "ลิ้งดิส"
-LMG2L["ลิ้งดิส_c"].Position = UDim2.new(0.01351, 0, 0.19328, 0)
-LMG2L["ลิ้งดิส_c"].TextColor3 = Color3.fromRGB(255, 255, 255)
+local ConfirmStroke = Instance.new("UIStroke", Confirm)
+ConfirmStroke.Color = Color3.fromRGB(255, 50, 50)
+ConfirmStroke.Thickness = 1.5
+ConfirmStroke.Transparency = 0.4
 
-LMG2L["UICorner_d"] = Instance.new("UICorner", LMG2L["ลิ้งดิส_c"])
+-- Discord Side Panel
+local Side = Instance.new("Frame", Main)
+Side.Size = UDim2.new(0, 160, 1, 0)
+Side.Position = UDim2.new(1, 8, 0, 0)
+Side.BackgroundColor3 = Color3.fromRGB(28, 6, 6)
+Side.BorderSizePixel = 0
 
--- ปุ่ม COPY
-LMG2L["TextButton_e"] = Instance.new("TextButton", LMG2L["ลิ้งดิส_c"])
-LMG2L["TextButton_e"].BorderSizePixel = 0
-LMG2L["TextButton_e"].TextStrokeColor3 = Color3.fromRGB(255, 0, 0)
-LMG2L["TextButton_e"].TextSize = 15
-LMG2L["TextButton_e"].TextColor3 = Color3.fromRGB(255, 0, 0)
-LMG2L["TextButton_e"].BackgroundColor3 = Color3.fromRGB(79, 14, 14)
-LMG2L["TextButton_e"].FontFace = Font.new("rbxasset://fonts/families/DenkOne.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-LMG2L["TextButton_e"].Size = UDim2.new(0.55556, 0, 0.22105, 0)
-LMG2L["TextButton_e"].Text = "COPY"
-LMG2L["TextButton_e"].Position = UDim2.new(0.22222, 0, 0.74737, 0)
+local SideCorner = Instance.new("UICorner", Side)
+SideCorner.CornerRadius = UDim.new(0, 10)
 
-LMG2L["UICorner_f"] = Instance.new("UICorner", LMG2L["TextButton_e"])
+local SideStroke = Instance.new("UIStroke", Side)
+SideStroke.Color = Color3.fromRGB(120, 20, 20)
+SideStroke.Thickness = 1.5
 
--- Aspect Ratio
-LMG2L["UIAspectRatioConstraint_10"] = Instance.new("UIAspectRatioConstraint", LMG2L["Frame_2"])
-LMG2L["UIAspectRatioConstraint_10"].AspectRatio = 1.47059
+local Contact = Instance.new("TextLabel", Side)
+Contact.Size = UDim2.new(1, -10, 0, 28)
+Contact.Position = UDim2.new(0, 5, 0, 8)
+Contact.BackgroundTransparency = 1
+Contact.Text = "ติดต่อ / ซื้อ KEY"
+Contact.Font = Enum.Font.GothamBold
+Contact.TextSize = 13
+Contact.TextColor3 = Color3.fromRGB(255, 90, 90)
 
--- ==================== ฟังก์ชันการทำงาน ====================
+local LinkLabel = Instance.new("TextLabel", Side)
+LinkLabel.Size = UDim2.new(1, -12, 0, 70)
+LinkLabel.Position = UDim2.new(0, 6, 0, 40)
+LinkLabel.BackgroundColor3 = Color3.fromRGB(40, 8, 8)
+LinkLabel.BorderSizePixel = 0
+LinkLabel.Text = "Discord:\n" .. DISCORD_LINK
+LinkLabel.Font = Enum.Font.Gotham
+LinkLabel.TextSize = 11
+LinkLabel.TextColor3 = Color3.fromRGB(220, 180, 180)
+LinkLabel.TextWrapped = true
+LinkLabel.TextYAlignment = Enum.TextYAlignment.Top
 
--- ปุ่ม Confirm
-LMG2L["TextButton_7"].MouseButton1Click:Connect(function()
-    local inputKey = LMG2L["KeyInput"].Text
-    
-    if inputKey == CORRECT_KEY then
-        -- Key ถูกต้อง
-        LMG2L["ScreenGui_1"]:Destroy()
+local LinkCorner = Instance.new("UICorner", LinkLabel)
+LinkCorner.CornerRadius = UDim.new(0, 6)
+
+local CopyBtn = Instance.new("TextButton", Side)
+CopyBtn.Size = UDim2.new(0.7, 0, 0, 32)
+CopyBtn.Position = UDim2.new(0.15, 0, 0.78, 0)
+CopyBtn.BackgroundColor3 = Color3.fromRGB(90, 12, 12)
+CopyBtn.BorderSizePixel = 0
+CopyBtn.Text = "COPY LINK"
+CopyBtn.Font = Enum.Font.GothamBold
+CopyBtn.TextSize = 13
+CopyBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+
+local CopyCorner = Instance.new("UICorner", CopyBtn)
+CopyCorner.CornerRadius = UDim.new(0, 6)
+
+-- ==================== เอฟเฟกต์เปิด GUI ====================
+playSound(Sounds.Open, 0.4)
+
+local openTween = TweenService:Create(Main, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+    Size = UDim2.new(0, 340, 0, 210)
+})
+openTween:Play()
+
+-- Hover ปุ่ม Confirm
+Confirm.MouseEnter:Connect(function()
+    TweenService:Create(Confirm, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(200, 25, 25)}):Play()
+    TweenService:Create(ConfirmStroke, TweenInfo.new(0.2), {Transparency = 0}):Play()
+end)
+Confirm.MouseLeave:Connect(function()
+    TweenService:Create(Confirm, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(160, 15, 15)}):Play()
+    TweenService:Create(ConfirmStroke, TweenInfo.new(0.2), {Transparency = 0.4}):Play()
+end)
+
+-- ==================== ระบบ Key ====================
+local function shakeFrame()
+    local original = Main.Position
+    for i = 1, 6 do
+        Main.Position = original + UDim2.new(0, math.random(-6, 6), 0, math.random(-4, 4))
+        task.wait(0.03)
+    end
+    Main.Position = original
+end
+
+Confirm.MouseButton1Click:Connect(function()
+    playSound(Sounds.Click, 0.5)
+    local input = KeyBox.Text
+
+    if input == CORRECT_KEY then
+        -- ✅ ถูกต้อง
+        playSound(Sounds.Success, 0.7)
+        sendWebhook(
+            "✅ Key Correct",
+            "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ถูกต้อง\n**Key:** ||" .. input .. "||",
+            5763719 -- เขียว
+        )
+
+        -- เอฟเฟกต์เขียว
+        TweenService:Create(MainStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(0, 255, 100)}):Play()
+        TweenService:Create(Title, TweenInfo.new(0.3), {TextColor3 = Color3.fromRGB(80, 255, 120)}):Play()
+
+        task.wait(0.6)
+
+        -- หายไปอย่างนุ่ม
+        local close = TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 1
+        })
+        close:Play()
+        close.Completed:Wait()
+        ScreenGui:Destroy()
         executeScript()
     else
-        -- Key ผิด → Kick
-        LocalPlayer:Kick("คุณไม่ได้รับอนุญาต (Key ผิด)")
-    end
-end)
+        -- ❌ ผิด
+        playSound(Sounds.Error, 0.7)
+        sendWebhook(
+            "❌ Key Incorrect",
+            "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ผิด\n**Key ที่ใส่:** `" .. (input \~= "" and input or "(ว่าง)") .. "`",
+            15548997 -- แดง
+        )
 
--- ปุ่ม COPY (คัดลอกลิงก์ Discord)
-LMG2L["TextButton_e"].MouseButton1Click:Connect(function()
-    -- ใช้ setclipboard ถ้ามี (executor ส่วนใหญ่รองรับ)
-    if setclipboard then
-        setclipboard(DISCORD_LINK)
-        
-        -- แจ้งเตือนสั้นๆ
-        local originalText = LMG2L["TextButton_e"].Text
-        LMG2L["TextButton_e"].Text = "COPIED!"
-        LMG2L["TextButton_e"].TextColor3 = Color3.fromRGB(0, 255, 0)
-        
-        task.delay(1.5, function()
-            if LMG2L["TextButton_e"] and LMG2L["TextButton_e"].Parent then
-                LMG2L["TextButton_e"].Text = originalText
-                LMG2L["TextButton_e"].TextColor3 = Color3.fromRGB(255, 0, 0)
-            end
-        end)
-    else
-        -- fallback ถ้าไม่มี setclipboard
-        warn("Executor นี้ไม่รองรับ setclipboard")
-        LMG2L["TextButton_e"].Text = "NO CLIPBOARD"
-        task.delay(1.5, function()
-            if LMG2L["TextButton_e"] and LMG2L["TextButton_e"].Parent then
-                LMG2L["TextButton_e"].Text = "COPY"
-            end
-        end)
-    end
-end)
-
--- กด Enter ในช่อง Key ก็ Confirm ได้
-LMG2L["KeyInput"].FocusLost:Connect(function(enterPressed)
-    if enterPressed then
-        LMG2L["TextButton_7"]:Activate() -- จำลองการกดปุ่ม
-    end
-end)
+        -- เอฟเฟกต์แดง + สั่น
+        TweenService:Create
