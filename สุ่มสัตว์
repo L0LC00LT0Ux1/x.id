@@ -7,7 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local MarketplaceService = game:GetService("MarketplaceService") -- ✏️ [แก้ไขเพิ่มเติม] ดึงข้อมูลแมพ
+local MarketplaceService = game:GetService("MarketplaceService")
 local LocalPlayer = Players.LocalPlayer
 
 -- ลบ GUI เก่าถ้ามีอยู่
@@ -16,7 +16,7 @@ if ParentGui:FindFirstChild("TOU_HUB_GUI") then
     ParentGui.TOU_HUB_GUI:Destroy()
 end
 
--- ✏️ [แก้ไขเพิ่มเติม] ฟังก์ชั่นแปลงตัวเลขเป็น k, m, b, t (เช่น 100,000 -> 100k / 1,000,000 -> 1m)
+-- ฟังก์ชั่นแปลงตัวเลขเป็น k, m, b, t (เช่น 100,000 -> 100k / 1,000,000 -> 1m)
 local function formatNumber(val)
     local n = tonumber(val) or 0
     local sign = n < 0 and "-" or ""
@@ -86,7 +86,7 @@ Sidebar.Position = UDim2.new(-0.245, 0, 0, 0)
 
 local UICorner_Side = Instance.new("UICorner", Sidebar)
 
--- 🏷️ ปุ่มเมนูข้าง (✏️ [แก้ไขเพิ่มเติม] ปรับตำแหน่งให้รองรับ 4 ปุ่ม)
+-- 🏷️ ปุ่มเมนูข้าง
 local BtnMain = Instance.new("TextButton")
 BtnMain.Name = "ช่องเมนูหลัก"
 BtnMain.Parent = Sidebar
@@ -100,7 +100,7 @@ BtnMain.Position = UDim2.new(0.075, 0, 0.04, 0)
 BtnMain.Text = "เมนูหลัก"
 Instance.new("UICorner", BtnMain)
 
-local BtnStats = Instance.new("TextButton") -- ✏️ [แก้ไขเพิ่มเติม] แท็บดูข้อมูล
+local BtnStats = Instance.new("TextButton")
 BtnStats.Name = "ช่องดูข้อมูล"
 BtnStats.Parent = Sidebar
 BtnStats.BorderSizePixel = 0
@@ -238,7 +238,7 @@ local function createTabPage(name)
 end
 
 local MainPage = createTabPage("MainPage")
-local StatsPage = createTabPage("StatsPage") -- ✏️ [แก้ไขเพิ่มเติม] แท็บดูข้อมูล
+local StatsPage = createTabPage("StatsPage")
 local FarmPage = createTabPage("FarmPage")
 local RollPage = createTabPage("RollPage")
 
@@ -351,7 +351,6 @@ local function addTextbox(parent, text, defaultText, callback)
     return box
 end
 
--- ✏️ [แก้ไขเพิ่มเติม] UI Helper สำหรับระบบเลือก Tool (Dropdown Selector)
 local function addToolSelector(parent, labelText, options, defaultOption, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 45)
@@ -420,20 +419,25 @@ local EVOLVE_30 = {Target="Darkstar Hunter", Need=5, Enabled=false}
 local EVOLVE_15 = {Target="Infernal Dragon", Need=5, Enabled=false}
 local EVOLVE_150 = {Target="Apex Overlord", Need=5, Enabled=false}
 
-local PET_FOLDERS = {
-    LocalPlayer:WaitForChild("petsFolder"):WaitForChild("Advanced"),
-    LocalPlayer.petsFolder:WaitForChild("Basic"),
-    LocalPlayer.petsFolder:WaitForChild("Epic"),
-    LocalPlayer.petsFolder:WaitForChild("Rare"),
-    LocalPlayer.petsFolder:WaitForChild("Unique"),
-}
-local AURA_FOLDERS = {
-    LocalPlayer:WaitForChild("powerUpsFolder"):WaitForChild("Epic"),
-    LocalPlayer.powerUpsFolder:WaitForChild("Basic"),
-    LocalPlayer.powerUpsFolder:WaitForChild("Advanced"),
-    LocalPlayer.powerUpsFolder:WaitForChild("Unique"),
-    LocalPlayer.powerUpsFolder:WaitForChild("Rare"),
-}
+-- ✏️ [แก้ไขเพิ่มเติม] ป้องกัน Error จากการโหลด Folder ในเป้
+local petsFolderObj = LocalPlayer:WaitForChild("petsFolder", 10)
+local powerUpsFolderObj = LocalPlayer:WaitForChild("powerUpsFolder", 10)
+
+local PET_FOLDERS = petsFolderObj and {
+    petsFolderObj:WaitForChild("Advanced", 5),
+    petsFolderObj:WaitForChild("Basic", 5),
+    petsFolderObj:WaitForChild("Epic", 5),
+    petsFolderObj:WaitForChild("Rare", 5),
+    petsFolderObj:WaitForChild("Unique", 5),
+} or {}
+
+local AURA_FOLDERS = powerUpsFolderObj and {
+    powerUpsFolderObj:WaitForChild("Epic", 5),
+    powerUpsFolderObj:WaitForChild("Basic", 5),
+    powerUpsFolderObj:WaitForChild("Advanced", 5),
+    powerUpsFolderObj:WaitForChild("Unique", 5),
+    powerUpsFolderObj:WaitForChild("Rare", 5),
+} or {}
 
 local running30, running15, running150 = false, false, false
 local sellConn30, sellConn15, sellConn150 = nil, nil, nil
@@ -452,33 +456,52 @@ local targetRebirths = 0
 local useRebirthTarget = false
 
 -- ════════ HELPERS ════════
+-- ✏️ [แก้ไขเพิ่มเติม] ครอบ pcall เช็คความปลอดภัยกัน nil call จาก Executor
 local function findNil(name)
     if typeof(getnilinstances) ~= "function" then return nil end
-    for _, o in ipairs(getnilinstances()) do if o.Name == name then return o end end
+    local success, instances = pcall(getnilinstances)
+    if not success or not instances then return nil end
+    for _, o in ipairs(instances) do 
+        if o and o.Name == name then return o end 
+    end
+    return nil
 end
 
 local function findNilDbg(name, id)
     if typeof(getnilinstances) ~= "function" then return nil end
-    for _, o in ipairs(getnilinstances()) do if o.Name == name and o:GetDebugId() == id then return o end end
+    local success, instances = pcall(getnilinstances)
+    if not success or not instances then return nil end
+    for _, o in ipairs(instances) do 
+        if o and o.Name == name then
+            local dbgId = nil
+            if typeof(getdebugid) == "function" then
+                pcall(function() dbgId = getdebugid(o) end)
+            elseif pcall(function() return o.GetDebugId end) and typeof(o.GetDebugId) == "function" then
+                pcall(function() dbgId = o:GetDebugId() end)
+            end
+            if dbgId == id then return o end
+        end
+    end
+    return nil
 end
 
 local function sellPet(name)
-    for _, f in ipairs(PET_FOLDERS) do local p = f:FindFirstChild(name) if p then sellPetEvent:FireServer("sellPet", p) return true end end
+    for _, f in ipairs(PET_FOLDERS) do if f then local p = f:FindFirstChild(name) if p then sellPetEvent:FireServer("sellPet", p) return true end end end
     local n = findNil(name) if n then sellPetEvent:FireServer("sellPet", n) return true end return false
 end
 
 local function sellAura(name)
-    for _, f in ipairs(AURA_FOLDERS) do local a = f:FindFirstChild(name) if a then sellPowerUpEvent:FireServer("sellPowerUp", a) return true end end
+    for _, f in ipairs(AURA_FOLDERS) do if f then local a = f:FindFirstChild(name) if a then sellPowerUpEvent:FireServer("sellPowerUp", a) return true end end end
     local n = findNil(name) if n then sellPowerUpEvent:FireServer("sellPowerUp", n) return true end return false
 end
 
 local function sellPetDbg(name, id)
-    for _, f in ipairs(PET_FOLDERS) do local p = f:FindFirstChild(name) if p then sellPetEvent:FireServer("sellPet", p) return true end end
+    for _, f in ipairs(PET_FOLDERS) do if f then local p = f:FindFirstChild(name) if p then sellPetEvent:FireServer("sellPet", p) return true end end end
     local n = findNilDbg(name, id) if n then sellPetEvent:FireServer("sellPet", n) return true end return false
 end
 
 local function sellAuraDbg(name, id)
-    for _, f in ipairs(AURA_FOLDERS) do local a = f:FindFirstChild(name) if a then sellPowerUpEvent:FireServer("sellPowerUp", a) return true end end
+    for _, f in ipairs(AURA_FOLDERS) do if f then local a = f:FindFirstChild(name) if a then sellPowerUpEvent:FireServer("sellPowerUp", a) return true end end end
     local n = findNilDbg(name, id) if n then sellPowerUpEvent:FireServer("sellPowerUp", n) return true end return false
 end
 
@@ -492,8 +515,10 @@ end
 local function countPet(name)
     local count = 0
     for _, folder in ipairs(PET_FOLDERS) do
-        for _, child in ipairs(folder:GetChildren()) do
-            if child.Name == name then count = count + 1 end
+        if folder then
+            for _, child in ipairs(folder:GetChildren()) do
+                if child.Name == name then count = count + 1 end
+            end
         end
     end
     return count
@@ -588,26 +613,29 @@ end
 
 -- ════════ AUTO-SELL ON CHILD ADDED ════════
 for _, f in ipairs(PET_FOLDERS) do
-    f.ChildAdded:Connect(function(c)
-        if SELL_PETS_30[c.Name] and running30 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
-        if SELL_PETS_15[c.Name] and running15 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
-        if SELL_PETS_150[c.Name] and running150 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
-        if sellTitan and c.Name == TITAN_REACTOR.Name and running150 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
-        if c.Name == EVOLVE_30.Target then task.delay(0.3, function() tryEvolve(EVOLVE_30) end) end
-        if c.Name == EVOLVE_15.Target then task.delay(0.3, function() tryEvolve(EVOLVE_15) end) end
-        if c.Name == EVOLVE_150.Target then task.delay(0.3, function() tryEvolve(EVOLVE_150) end) end
-    end)
+    if f then
+        f.ChildAdded:Connect(function(c)
+            if SELL_PETS_30[c.Name] and running30 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+            if SELL_PETS_15[c.Name] and running15 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+            if SELL_PETS_150[c.Name] and running150 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+            if sellTitan and c.Name == TITAN_REACTOR.Name and running150 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+            if c.Name == EVOLVE_30.Target then task.delay(0.3, function() tryEvolve(EVOLVE_30) end) end
+            if c.Name == EVOLVE_15.Target then task.delay(0.3, function() tryEvolve(EVOLVE_15) end) end
+            if c.Name == EVOLVE_150.Target then task.delay(0.3, function() tryEvolve(EVOLVE_150) end) end
+        end)
+    end
 end
 
 for _, f in ipairs(AURA_FOLDERS) do
-    f.ChildAdded:Connect(function(c)
-        if SELL_AURAS_30[c.Name] and running30 then task.wait(0.1) sellPowerUpEvent:FireServer("sellPowerUp", c) end
-        if SELL_AURAS_15[c.Name] and running15 then task.wait(0.1) sellPowerUpEvent:FireServer("sellPowerUp", c) end
-    end)
+    if f then
+        f.ChildAdded:Connect(function(c)
+            if SELL_AURAS_30[c.Name] and running30 then task.wait(0.1) sellPowerUpEvent:FireServer("sellPowerUp", c) end
+            if SELL_AURAS_15[c.Name] and running15 then task.wait(0.1) sellPowerUpEvent:FireServer("sellPowerUp", c) end
+        end)
+    end
 end
 
 -- ════════ POPULATING TAB 1: เมนูหลัก (MAIN ACCOUNT & GAME INFO) ════════
--- ✏️ [แก้ไขเพิ่มเติม] ปรับแสดงข้อมูลบัญชี Roblox, อายุบัญชี, แมพที่รัน และไอดีเซิร์ฟเวอร์
 local mapTitle = "ไม่พบข้อมูล"
 pcall(function()
     local info = MarketplaceService:GetProductInfo(game.PlaceId)
@@ -660,7 +688,6 @@ addTextbox(MainPage, "🦘 JumpPower Custom", "50", function(txt)
 end)
 
 -- ════════ POPULATING TAB 2: ดูข้อมูล (STATS MENU) ════════
--- ✏️ [แก้ไขเพิ่มเติม] ย้ายระบบดูข้อมูลพลังทั้งหมดมาไว้ที่ช่องนี้ + แปลงตัวเลขเป็น k, m, b
 local StatsDisplay = Instance.new("TextLabel")
 StatsDisplay.Size = UDim2.new(1, 0, 0, 160)
 StatsDisplay.BackgroundColor3 = Color3.fromRGB(50, 5, 5)
@@ -732,7 +759,6 @@ addButton(StatsPage, "🔍 ดูข้อมูลผู้เล่นเป�
 end)
 
 -- ════════ POPULATING TAB 3: ฟาม (FARM & REBIRTH) ════════
--- ✏️ [แก้ไขเพิ่มเติม] เปลี่ยนระบบกรอกชื่อ Tool มาเป็นปุ่มเลือก (Weight, Situps, Pushups, Handstands)
 local availableTools = {"Weight", "Situps", "Pushups", "Handstands"}
 addToolSelector(FarmPage, "🏋️ เลือก Tool ฟาม", availableTools, "Weight", function(selectedTool)
     farmTool = selectedTool
@@ -799,7 +825,8 @@ addToggle(RollPage, "▶ เปิดสุ่ม รี 15 (Inferno)", false, f
             end
         end)
     else
-        if sellConn15 me then sellConn15:Disconnect() sellConn15 = nil end
+        -- ✏️ [แก้ไขจุด Error] ลบคำว่า 'me' ที่พิมพ์เกินออก แก้คำสั่งให้ถูกต้อง
+        if sellConn15 then sellConn15:Disconnect() sellConn15 = nil end
     end
 end)
 
@@ -832,4 +859,4 @@ addToggle(RollPage, "☑️ Auto Evolve Apex Overlord", false, function(state)
     EVOLVE_150.Enabled = state
 end)
 
-print("😈 TOU HUB Custom GUI Edition Updated Successfully!")
+print("😈 TOU HUB Custom GUI Edition Error Fixed Perfectly!")
