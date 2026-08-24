@@ -1,7 +1,8 @@
---[=[
- TOU HUB | KEY SYSTEM - Fixed v3 (เสถียรขึ้น)
-]=]
+-- ╔══════════════════════════════════════════════════════════════╗
+-- ║ 🔐 TOU HUB | KEY SYSTEM + MAIN SCRIPT (Combined)           ║
+-- ╚══════════════════════════════════════════════════════════════╝
 
+-- โหลดตัวแปรหลัก
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
@@ -20,7 +21,7 @@ local WHITELIST = {
 
 -- 🔑 Config
 local CORRECT_KEY = "TOUx1_HUB_KEY"
-local SCRIPT_URL = "https://pastefy.app/b5GOEKSP/raw"
+local SCRIPT_URL = "https://pastefy.app/b5GOEKSP/raw" -- เก็บไว้เผื่อใช้ดึงภายหลัง
 local DISCORD_LINK = "https://discord.gg/dTz2njT9fZ"
 local WEBHOOK_URL = "https://discord.com/api/webhooks/1539980287264559134/B3I_P06MBIznj9_4wyJd87Wj-EhPOSITpWhCLYcNijS8z5V4OxuGdbtvA0Qb04vhTw1R"
 
@@ -61,31 +62,916 @@ local function sendWebhook(title, description, color)
     end)
 end
 
--- 🚀 รันสคริปต์หลัก
-local function executeScript()
-    local success, content = pcall(function()
-        return game:HttpGet(SCRIPT_URL)
-    end)
-    if success and content and loadstring then
-        local fn, err = loadstring(content)
-        if fn then
-            pcall(fn)
-        else
-            warn("Loadstring error:", err)
-        end
-    else
-        warn("ไม่สามารถโหลดสคริปต์หลักได้")
+-- 🚀 ฟังก์ชันรันสคริปต์หลัก (จะถูกเรียกเมื่อผ่าน Key แล้ว)
+local function runMainScript()
+    -- ══════════════════════════════════════════════════════════════
+    -- 🎲 MAIN SCRIPT : AUTO ROLL + SELL + EVOLVE + FARM + REBIRTH + STATS
+    -- ══════════════════════════════════════════════════════════════
+    local EclipseLib = loadstring(game:HttpGet(
+        "https://raw.githubusercontent.com/TOUx1/Roblox-script/main/auto_protected_1777159458057.lua"
+    ))()
+
+    -- 🪟 สร้าง Window
+    local Win = EclipseLib:CreateWindow({
+        Name             = "🔥 รุ่นใหญ่ HUB",
+        LoadingTitle     = "🔥 รุ่นใหญ่ HUB",
+        LoadingSubtitle  = "กำลังโหลด...",
+        ConfigurationSaving = {
+            FolderName = "🔥 รุ่นใหญ่ HUB"
+        },
+    })
+
+    -- ════════ SERVICES ════════
+    local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local RunService = game:GetService("RunService")
+    local LocalPlayer = Players.LocalPlayer
+
+    -- ════════ REMOTES ════════
+    local openCrystalRemote = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("openCrystalRemote")
+    local sellPetEvent = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("sellPetEvent")
+    local sellPowerUpEvent = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("sellPowerUpEvent")
+    local petEvolveEvent = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("petEvolveEvent")
+    local rebirthRemote = ReplicatedStorage:WaitForChild("rEvents"):WaitForChild("rebirthRemote")
+
+    -- ════════ CONFIG ════════
+    local CRYSTAL_30 = "Galaxy Oracle Crystal"
+    local CRYSTAL_15 = "Inferno Crystal"
+    local CRYSTAL_150 = "Industrial Crystal"
+    local BULK_AMOUNT = 10
+    local DELAY_30, DELAY_15, DELAY_150 = 0.3, 0.3, 0.5
+
+    local SELL_PETS_30 = {["Eternal Strike Leviathan"]=true,["Lightning Strike Phantom"]=true}
+    local SELL_AURAS_30 = {["Ultra Inferno"]=true,["Azure Tundra"]=true}
+    local SELL_PETS_15 = {["Red Firecaster"]="1_2567483",["White Pegasus"]="1_2567305",["Golden Pheonix"]="1_2565691"}
+    local SELL_AURAS_15 = {["Grand Supernova"]="1_2567413",["Lightning"]="1_2566778",["Enchanted Mirage"]="1_2565705",["Unstable Mirage"]="1_2565275",["Dark Lightning"]="1_635194",["Inferno"]="1_638292",["Azure Tundra"]="1_653186"}
+    local SELL_PETS_150 = {["Plasma Ravager"]="1_315848",["Reactor Beast"]="1_321232",["Volt Talon"]="1_321250",["Core Pup"]="1_321241"}
+    local TITAN_REACTOR = {Name="Titan Reactor", DebugId="1_433530"}
+
+    -- ════════ EVOLVE CONFIG ════════
+    local EVOLVE_30 = {Target="Darkstar Hunter", Need=5, Enabled=false}
+    local EVOLVE_15 = {Target="Infernal Dragon", Need=5, Enabled=false}
+    local EVOLVE_150 = {Target="Apex Overlord", Need=5, Enabled=false}
+
+    -- ════════ FOLDERS ════════
+    local PET_FOLDERS = {
+        LocalPlayer:WaitForChild("petsFolder"):WaitForChild("Advanced"),
+        LocalPlayer.petsFolder:WaitForChild("Basic"),
+        LocalPlayer.petsFolder:WaitForChild("Epic"),
+        LocalPlayer.petsFolder:WaitForChild("Rare"),
+        LocalPlayer.petsFolder:WaitForChild("Unique"),
+    }
+    local AURA_FOLDERS = {
+        LocalPlayer:WaitForChild("powerUpsFolder"):WaitForChild("Epic"),
+        LocalPlayer.powerUpsFolder:WaitForChild("Basic"),
+        LocalPlayer.powerUpsFolder:WaitForChild("Advanced"),
+        LocalPlayer.powerUpsFolder:WaitForChild("Unique"),
+        LocalPlayer.powerUpsFolder:WaitForChild("Rare"),
+    }
+
+    -- ════════ STATE ════════
+    local running30, running15, running150 = false, false, false
+    local sellConn30, sellConn15, sellConn150 = nil, nil, nil
+    local lastScan30, lastScan15, lastScan150 = 0, 0, 0
+    local sellTitan = false
+    local evolving = false
+
+    -- ═══════️ FARMING STATE ════════
+    local farmEnabled = false
+    local farmTool = nil
+    local fastMode = false
+    local farmConn = nil
+    local rebirthEnabled = false
+    local rebirthConn = nil
+    local rebirthTarget = 1
+    local rebirthCount = 0
+    local initialRebirth = 0
+
+    -- ═══════️ STATS DISPLAY STATE ════════
+    local statsDisplayFrame = nil
+    local statsDisplayLabels = {}
+    local statsUpdateConn = nil
+    local statsDisplayPlayer = nil
+
+    -- ═══════️ AUTO REBIRTH CHECK STATE ════════
+    local autoRebirthCheckConn = nil
+
+    -- ════════ HELPERS ════════
+    local function findNil(name)
+        if typeof(getnilinstances) ~= "function" then return nil end
+        for _, o in ipairs(getnilinstances()) do if o.Name == name then return o end end
     end
+
+    local function findNilDbg(name, id)
+        if typeof(getnilinstances) ~= "function" then return nil end
+        for _, o in ipairs(getnilinstances()) do if o.Name == name and o:GetDebugId() == id then return o end end
+    end
+
+    local function sellPet(name)
+        for _, f in ipairs(PET_FOLDERS) do local p = f:FindFirstChild(name) if p then sellPetEvent:FireServer("sellPet", p) return true end end
+        local n = findNil(name) if n then sellPetEvent:FireServer("sellPet", n) return true end return false
+    end
+
+    local function sellAura(name)
+        for _, f in ipairs(AURA_FOLDERS) do local a = f:FindFirstChild(name) if a then sellPowerUpEvent:FireServer("sellPowerUp", a) return true end end
+        local n = findNil(name) if n then sellPowerUpEvent:FireServer("sellPowerUp", n) return true end return false
+    end
+
+    local function sellPetDbg(name, id)
+        for _, f in ipairs(PET_FOLDERS) do local p = f:FindFirstChild(name) if p then sellPetEvent:FireServer("sellPet", p) return true end end
+        local n = findNilDbg(name, id) if n then sellPetEvent:FireServer("sellPet", n) return true end return false
+    end
+
+    local function sellAuraDbg(name, id)
+        for _, f in ipairs(AURA_FOLDERS) do local a = f:FindFirstChild(name) if a then sellPowerUpEvent:FireServer("sellPowerUp", a) return true end end
+        local n = findNilDbg(name, id) if n then sellPowerUpEvent:FireServer("sellPowerUp", n) return true end return false
+    end
+
+    local function scan30() for n,_ in pairs(SELL_PETS_30) do sellPet(n) end for n,_ in pairs(SELL_AURAS_30) do sellAura(n) end end
+    local function scan15() for n,id in pairs(SELL_PETS_15) do sellPetDbg(n,id) end for n,id in pairs(SELL_AURAS_15) do sellAuraDbg(n,id) end end
+    local function scan150()
+        for n,id in pairs(SELL_PETS_150) do sellPetDbg(n,id) end
+        if sellTitan then sellPetDbg(TITAN_REACTOR.Name, TITAN_REACTOR.DebugId) end
+    end
+
+    local function countPet(name)
+        local count = 0
+        for _, folder in ipairs(PET_FOLDERS) do
+            for _, child in ipairs(folder:GetChildren()) do
+                if child.Name == name then count = count + 1 end
+            end
+        end
+        return count
+    end
+
+    local function tryEvolve(cfg)
+        if evolving or not cfg.Enabled then return end
+        local count = countPet(cfg.Target)
+        if count >= cfg.Need then
+            evolving = true
+            EclipseLib:Notify({Title="🔄 Evolve", Content="กำลัง Evolve " .. cfg.Target .. "...", Duration=2, Type="info"})
+            local ok = pcall(function() petEvolveEvent:FireServer("evolvePet", cfg.Target) end)
+            if ok then
+                EclipseLib:Notify({Title="✅ Evolve สำเร็จ", Content=cfg.Target .. " Evolved!", Duration=3, Type="success"})
+            else
+                EclipseLib:Notify({Title="❌ Evolve ล้มเหลว", Content=cfg.Target, Duration=3, Type="error"})
+            end
+            evolving = false
+        end
+    end
+
+    local function roll30()
+        local ok = pcall(function() openCrystalRemote:InvokeServer("openCrystal", CRYSTAL_30) end)
+        if ok then task.delay(0.15, function() scan30() tryEvolve(EVOLVE_30) end) end
+        return ok
+    end
+
+    local function roll15()
+        local ok = pcall(function() openCrystalRemote:InvokeServer("openCrystal", CRYSTAL_15) end)
+        if ok then task.delay(0.15, function() scan15() tryEvolve(EVOLVE_15) end) end
+        return ok
+    end
+
+    local function roll150()
+        local ok = pcall(function() openCrystalRemote:InvokeServer("openCrystalBulk", CRYSTAL_150, BULK_AMOUNT) end)
+        if ok then task.delay(0.3, function() scan150() tryEvolve(EVOLVE_150) end) end
+        return ok
+    end
+
+    -- ════════ FARMING HELPERS ════════
+    local function getMuscleEvent()
+        return LocalPlayer:FindFirstChild("muscleEvent")
+    end
+
+    local function equipTool(toolName)
+        local char = LocalPlayer.Character
+        if not char then return false end
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return false end
+
+        local tool = LocalPlayer.Backpack:FindFirstChild(toolName) or char:FindFirstChild(toolName)
+        if tool then
+            humanoid:EquipTool(tool)
+            return true
+        end
+        return false
+    end
+
+    local function fireMuscle()
+        local event = getMuscleEvent()
+        if event then
+            pcall(function()
+                event:FireServer("rep")
+            end)
+        end
+    end
+
+    local function startFarming()
+        if not farmTool then return end
+        farmEnabled = true
+        farmConn = RunService.Heartbeat:Connect(function()
+            if not farmEnabled then return end
+            if not equipTool(farmTool) then
+                local char = LocalPlayer.Character
+                if not char then return end
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                if not humanoid then return end
+                local tool = LocalPlayer.Backpack:FindFirstChild(farmTool) or char:FindFirstChild(farmTool)
+                if tool then
+                    humanoid:EquipTool(tool)
+                end
+            end
+            fireMuscle()
+            task.wait(fastMode and 0.01 or 0.1)
+        end)
+    end
+
+    local function stopFarming()
+        farmEnabled = false
+        if farmConn then
+            farmConn:Disconnect()
+            farmConn = nil
+        end
+    end
+
+    local function startRebirth()
+        if rebirthEnabled then return end
+
+        local currentRebirth = LocalPlayer.leaderstats.Rebirths.Value
+        initialRebirth = currentRebirth
+        rebirthCount = 0
+        rebirthEnabled = true
+
+        EclipseLib:Notify({
+            Title = "🔄 รีเบิร์ด",
+            Content = "เริ่มรีเบิร์ด เป้าหมาย: " .. rebirthTarget .. " ครั้ง (ปัจจุบัน: " .. currentRebirth .. ")",
+            Duration = 3,
+            Type = "info"
+        })
+
+        rebirthConn = RunService.Heartbeat:Connect(function()
+            if not rebirthEnabled then return end
+
+            local current = LocalPlayer.leaderstats.Rebirths.Value
+            rebirthCount = current - initialRebirth
+
+            if rebirthCount >= rebirthTarget then
+                stopRebirth()
+                EclipseLib:Notify({
+                    Title = "✅ รีเบิร์ดสำเร็จ",
+                    Content = "รีเบิร์ดครบ " .. rebirthTarget .. " ครั้งแล้ว! (ทั้งหมด: " .. current .. ")",
+                    Duration = 3,
+                    Type = "success"
+                })
+                return
+            end
+
+            pcall(function()
+                rebirthRemote:InvokeServer("rebirthRequest")
+            end)
+            task.wait(0.5)
+        end)
+    end
+
+    local function stopRebirth()
+        rebirthEnabled = false
+        if rebirthConn then
+            rebirthConn:Disconnect()
+            rebirthConn = nil
+        end
+    end
+
+    -- ════════ STATS VIEWER ════════
+    local function getPlayerStats(player)
+        local stats = {}
+
+        stats.Agility = player:FindFirstChild("Agility") and player.Agility.Value or 0
+        stats.Durability = player:FindFirstChild("Durability") and player.Durability.Value or 0
+
+        local leaderstats = player:FindFirstChild("leaderstats")
+        if leaderstats then
+            stats.Kills = leaderstats:FindFirstChild("Kills") and leaderstats.Kills.Value or 0
+            stats.Strength = leaderstats:FindFirstChild("Strength") and leaderstats.Strength.Value or 0
+            stats.Rebirths = leaderstats:FindFirstChild("Rebirths") and leaderstats.Rebirths.Value or 0
+            stats.Brawls = leaderstats:FindFirstChild("Brawls") and leaderstats.Brawls.Value or 0
+        else
+            stats.Kills = 0
+            stats.Strength = 0
+            stats.Rebirths = 0
+            stats.Brawls = 0
+        end
+
+        stats.GoodKarma = player:FindFirstChild("goodKarma") and player.goodKarma.Value or 0
+        stats.BadKarma = player:FindFirstChild("badKarma") and player.badKarma.Value or 0
+        stats.MaxPetCapacity = player:FindFirstChild("maxPetCapacity") and player.maxPetCapacity.Value or 0
+        stats.Gems = player:FindFirstChild("Gems") and player.Gems.Value or 0
+
+        local consumablesFolder = player:FindFirstChild("consumablesFolder")
+        local boosts = {}
+        if consumablesFolder then
+            for _, item in ipairs(consumablesFolder:GetChildren()) do
+                local value = item:IsA("NumberValue") and item.Value or 1
+                table.insert(boosts, item.Name .. " x" .. value)
+            end
+        end
+
+        return stats, boosts
+    end
+
+    -- ═══════️ CREATE STATS DISPLAY GUI ════════
+    local function createStatsDisplay()
+        if statsDisplayFrame then
+            statsDisplayFrame:Destroy()
+        end
+
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "StatsDisplayGUI"
+        screenGui.ResetOnSpawn = false
+        screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+        local frame = Instance.new("Frame")
+        frame.Name = "StatsFrame"
+        frame.Size = UDim2.new(0, 380, 0, 450)
+        frame.Position = UDim2.new(0.65, 0, 0.15, 0)
+        frame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+        frame.BackgroundTransparency = 0.05
+        frame.BorderSizePixel = 0
+        frame.Parent = screenGui
+
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 12)
+        corner.Parent = frame
+
+        local title = Instance.new("TextLabel")
+        title.Name = "Title"
+        title.Size = UDim2.new(1, 0, 0, 45)
+        title.Position = UDim2.new(0, 0, 0, 0)
+        title.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+        title.BackgroundTransparency = 0.1
+        title.Text = "📊 สถิติผู้เล่น"
+        title.TextColor3 = Color3.fromRGB(255, 255, 255)
+        title.TextScaled = true
+        title.Font = Enum.Font.GothamBold
+        title.Parent = frame
+
+        local titleCorner = Instance.new("UICorner")
+        titleCorner.CornerRadius = UDim.new(0, 12)
+        titleCorner.Parent = title
+
+        local closeBtn = Instance.new("TextButton")
+        closeBtn.Name = "CloseBtn"
+        closeBtn.Size = UDim2.new(0, 40, 0, 40)
+        closeBtn.Position = UDim2.new(1, -45, 0, 2)
+        closeBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+        closeBtn.Text = "✕"
+        closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        closeBtn.TextScaled = true
+        closeBtn.Font = Enum.Font.GothamBold
+        closeBtn.Parent = frame
+
+        local closeCorner = Instance.new("UICorner")
+        closeCorner.CornerRadius = UDim.new(0, 8)
+        closeCorner.Parent = closeBtn
+
+        closeBtn.MouseButton1Click:Connect(function()
+            if statsUpdateConn then
+                statsUpdateConn:Disconnect()
+                statsUpdateConn = nil
+            end
+            frame:Destroy()
+            statsDisplayFrame = nil
+            statsDisplayPlayer = nil
+        end)
+
+        local scrollFrame = Instance.new("ScrollingFrame")
+        scrollFrame.Name = "ScrollFrame"
+        scrollFrame.Size = UDim2.new(1, 0, 1, -45)
+        scrollFrame.Position = UDim2.new(0, 0, 0, 45)
+        scrollFrame.BackgroundTransparency = 1
+        scrollFrame.ScrollBarThickness = 5
+        scrollFrame.ScrollBarColor = Color3.fromRGB(100, 100, 150)
+        scrollFrame.Parent = frame
+
+        local layout = Instance.new("UIListLayout")
+        layout.Padding = UDim.new(0, 5)
+        layout.Parent = scrollFrame
+
+        local padding = Instance.new("UIPadding")
+        padding.PaddingTop = UDim.new(0, 10)
+        padding.PaddingLeft = UDim.new(0, 10)
+        padding.PaddingRight = UDim.new(0, 10)
+        padding.PaddingBottom = UDim.new(0, 10)
+        padding.Parent = scrollFrame
+
+        statsDisplayFrame = frame
+        statsDisplayLabels = {}
+
+        return frame
+    end
+
+    local function updateStatsDisplay(playerName)
+        local player = Players:FindFirstChild(playerName)
+        if not player then
+            EclipseLib:Notify({
+                Title = "❌ ไม่พบผู้เล่น",
+                Content = "ไม่พบผู้เล่นชื่อ " .. playerName,
+                Duration = 2,
+                Type = "error"
+            })
+            return
+        end
+
+        statsDisplayPlayer = playerName
+
+        if not statsDisplayFrame then
+            createStatsDisplay()
+        end
+
+        if statsUpdateConn then
+            statsUpdateConn:Disconnect()
+            statsUpdateConn = nil
+        end
+
+        local function refreshStats()
+            if not statsDisplayFrame then return end
+
+            local stats, boosts = getPlayerStats(player)
+
+            for _, label in pairs(statsDisplayLabels) do
+                label:Destroy()
+            end
+            statsDisplayLabels = {}
+
+            local scrollFrame = statsDisplayFrame:FindFirstChild("ScrollFrame")
+            if not scrollFrame then return end
+
+            local titleLabel = statsDisplayFrame:FindFirstChild("Title")
+            if titleLabel then
+                titleLabel.Text = "📊 สถิติ: " .. player.Name
+            end
+
+            local statsData = {
+                {"👤 ผู้เล่น", player.Name},
+                {"⚡ ค่าพลังความไว", tostring(stats.Agility)},
+                {"🛡️ ค่าพลังความทนทาน", tostring(stats.Durability)},
+                {"⚔️ การฆ่า", tostring(stats.Kills)},
+                {"💪 ค่าพลังกล้าม", tostring(stats.Strength)},
+                {"🔄 รีเบิร์ด", tostring(stats.Rebirths)},
+                {"😇 กรรมดี", tostring(stats.GoodKarma)},
+                {"😈 กรรมชั่ว", tostring(stats.BadKarma)},
+                {"🐾 ใส่สัตว์ได้", tostring(stats.MaxPetCapacity)},
+                {"💎 เพชร", tostring(stats.Gems)},
+                {"🥊 เข้าร่วมเวที", tostring(stats.Brawls)},
+                {"🧪 บูสโปรตีน", #boosts > 0 and table.concat(boosts, ", ") or "ไม่มี"},
+            }
+
+            for _, data in ipairs(statsData) do
+                local label = Instance.new("TextLabel")
+                label.Size = UDim2.new(1, -10, 0, 32)
+                label.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+                label.BackgroundTransparency = 0.15
+                label.Text = data[1] .. ": " .. data[2]
+                label.TextColor3 = Color3.fromRGB(255, 255, 255)
+                label.TextScaled = true
+                label.Font = Enum.Font.Gotham
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.Parent = scrollFrame
+
+                local labelCorner = Instance.new("UICorner")
+                labelCorner.CornerRadius = UDim.new(0, 6)
+                labelCorner.Parent = label
+
+                local labelPadding = Instance.new("UIPadding")
+                labelPadding.PaddingLeft = UDim.new(0, 10)
+                labelPadding.Parent = label
+
+                table.insert(statsDisplayLabels, label)
+            end
+        end
+
+        refreshStats()
+
+        statsUpdateConn = RunService.Heartbeat:Connect(function()
+            if not statsDisplayFrame then
+                statsUpdateConn:Disconnect()
+                statsUpdateConn = nil
+                return
+            end
+            task.wait(1)
+            refreshStats()
+        end)
+    end
+
+    -- ════════ TAB: สุ่มสัตว์ ════════
+    local RollTab = Win:CreateTab({ Name = "สุ่มสัตว์", Icon = "🎲" })
+
+    RollTab:AddSection({ Name = "💎 Galaxy Oracle Crystal (รี 30)" })
+
+    RollTab:AddToggle({
+        Name = "▶ เปิดสุ่ม รี 30",
+        Description = "สุ่มสัตว์ Galaxy Oracle Crystal อัตโนมัติ",
+        Default = false,
+        ConfigKey = "Roll30Toggle",
+        Callback = function(state)
+            running30 = state
+            if running30 then
+                scan30()
+                tryEvolve(EVOLVE_30)
+                task.spawn(function()
+                    while running30 do
+                        roll30()
+                        task.wait(DELAY_30)
+                    end
+                end)
+                sellConn30 = RunService.Heartbeat:Connect(function()
+                    if running30 and (os.clock() - lastScan30) > 0.3 then
+                        lastScan30 = os.clock()
+                        scan30()
+                        tryEvolve(EVOLVE_30)
+                    end
+                end)
+            else
+                if sellConn30 then sellConn30:Disconnect() sellConn30 = nil end
+            end
+        end
+    })
+
+    RollTab:AddToggle({
+        Name = "☑️ Auto Evolve Darkstar Hunter",
+        Description = "เมื่อครบ 5 ตัวจะ Evolve อัตโนมัติ",
+        Default = false,
+        ConfigKey = "Evolve30Toggle",
+        Callback = function(state)
+            EVOLVE_30.Enabled = state
+        end
+    })
+
+    RollTab:AddSection({ Name = "🔥 Inferno Crystal (รี 15)" })
+
+    RollTab:AddToggle({
+        Name = "▶ เปิดสุ่ม รี 15",
+        Description = "สุ่มสัตว์ Inferno Crystal อัตโนมัติ",
+        Default = false,
+        ConfigKey = "Roll15Toggle",
+        Callback = function(state)
+            running15 = state
+            if running15 then
+                scan15()
+                tryEvolve(EVOLVE_15)
+                task.spawn(function()
+                    while running15 do
+                        roll15()
+                        task.wait(DELAY_15)
+                    end
+                end)
+                sellConn15 = RunService.Heartbeat:Connect(function()
+                    if running15 and (os.clock() - lastScan15) > 0.3 then
+                        lastScan15 = os.clock()
+                        scan15()
+                        tryEvolve(EVOLVE_15)
+                    end
+                end)
+            else
+                if sellConn15 then sellConn15:Disconnect() sellConn15 = nil end
+            end
+        end
+    })
+
+    RollTab:AddToggle({
+        Name = "☑️ Auto Evolve Infernal Dragon",
+        Description = "เมื่อครบ 5 ตัวจะ Evolve อัตโนมัติ",
+        Default = false,
+        ConfigKey = "Evolve15Toggle",
+        Callback = function(state)
+            EVOLVE_15.Enabled = state
+        end
+    })
+
+    RollTab:AddSection({ Name = "🏭 Industrial Crystal (รี 150)" })
+
+    RollTab:AddToggle({
+        Name = "▶ เปิดสุ่ม รี 150",
+        Description = "สุ่มสัตว์ Industrial Crystal แบบ Bulk อัตโนมัติ",
+        Default = false,
+        ConfigKey = "Roll150Toggle",
+        Callback = function(state)
+            running150 = state
+            if running150 then
+                scan150()
+                tryEvolve(EVOLVE_150)
+                task.spawn(function()
+                    while running150 do
+                        roll150()
+                        task.wait(DELAY_150)
+                    end
+                end)
+                sellConn150 = RunService.Heartbeat:Connect(function()
+                    if running150 and (os.clock() - lastScan150) > 0.3 then
+                        lastScan150 = os.clock()
+                        scan150()
+                        tryEvolve(EVOLVE_150)
+                    end
+                end)
+            else
+                if sellConn150 then sellConn150:Disconnect() sellConn150 = nil end
+            end
+        end
+    })
+
+    RollTab:AddToggle({
+        Name = "☑️ ลบ Titan Reactor",
+        Description = "ขายทิ้ง Titan Reactor ด้วย DebugId",
+        Default = false,
+        ConfigKey = "TitanToggle",
+        Callback = function(state)
+            sellTitan = state
+        end
+    })
+
+    RollTab:AddToggle({
+        Name = "☑️ Auto Evolve Apex Overlord",
+        Description = "เมื่อครบ 5 ตัวจะ Evolve อัตโนมัติ",
+        Default = false,
+        ConfigKey = "Evolve150Toggle",
+        Callback = function(state)
+            EVOLVE_150.Enabled = state
+        end
+    })
+
+    -- ════════ AUTO-SELL ON CHILD ADDED ════════
+    for _, f in ipairs(PET_FOLDERS) do
+        f.ChildAdded:Connect(function(c)
+            if SELL_PETS_30[c.Name] and running30 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+            if SELL_PETS_15[c.Name] and running15 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+            if SELL_PETS_150[c.Name] and running150 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+            if sellTitan and c.Name == TITAN_REACTOR.Name and running150 then task.wait(0.1) sellPetEvent:FireServer("sellPet", c) end
+            if c.Name == EVOLVE_30.Target then task.delay(0.3, function() tryEvolve(EVOLVE_30) end) end
+            if c.Name == EVOLVE_15.Target then task.delay(0.3, function() tryEvolve(EVOLVE_15) end) end
+            if c.Name == EVOLVE_150.Target then task.delay(0.3, function() tryEvolve(EVOLVE_150) end) end
+        end)
+    end
+
+    for _, f in ipairs(AURA_FOLDERS) do
+        f.ChildAdded:Connect(function(c)
+            if SELL_AURAS_30[c.Name] and running30 then task.wait(0.1) sellPowerUpEvent:FireServer("sellPowerUp", c) end
+            if SELL_AURAS_15[c.Name] and running15 then task.wait(0.1) sellPowerUpEvent:FireServer("sellPowerUp", c) end
+        end)
+    end
+
+    -- ════════ TAB: ฟาม ════════
+    local FarmTab = Win:CreateTab({ Name = "ฟาม", Icon = "💪" })
+
+    FarmTab:AddSection({ Name = "🏋️ ออกกำลังกายอัตโนมัติ" })
+
+    FarmTab:AddDropdown({
+        Name = "เลือก Tool ที่ใช้ฟาม",
+        Options = {"Weight", "Situps", "Pushups", "Handstands"},
+        Default = "Weight",
+        ConfigKey = "FarmToolSelect",
+        Callback = function(selected)
+            farmTool = selected
+        end
+    })
+
+    FarmTab:AddToggle({
+        Name = "▶ เปิดอ้อโต้ออกกำลังกาย",
+        Description = "ถือ Tool ที่เลือกและรันรีโมทยกน้ำหนักอัตโนมัติ",
+        Default = false,
+        ConfigKey = "FarmToggle",
+        Callback = function(state)
+            if state then
+                if not farmTool then
+                    farmTool = "Weight"
+                end
+                startFarming()
+            else
+                stopFarming()
+            end
+        end
+    })
+
+    FarmTab:AddToggle({
+        Name = "⚡ ยกน้ำหนักแบบไว (สำหรับคนมีแพ็ค)",
+        Description = "รันรีโมทยกน้ำหนักความเร็ว 0.01 วิ",
+        Default = false,
+        ConfigKey = "FastFarmToggle",
+        Callback = function(state)
+            fastMode = state
+            if farmEnabled then
+                stopFarming()
+                startFarming()
+            end
+        end
+    })
+
+    FarmTab:AddSection({ Name = "🔄 รีเบิร์ดอัตโนมัติ" })
+
+    FarmTab:AddTextbox({
+        Name = "จำนวนรีเบิร์ดที่ต้องการ",
+        Description = "ใส่จำนวนครั้งที่ต้องการรีเบิร์ด",
+        Default = "1",
+        ConfigKey = "RebirthTargetInput",
+        Callback = function(value)
+            local num = tonumber(value)
+            if num and num > 0 then
+                rebirthTarget = num
+            else
+                rebirthTarget = 1
+            end
+        end
+    })
+
+    FarmTab:AddToggle({
+        Name = "▶ เปิดอ้อโต้รีเบิร์ด",
+        Description = "รีเบิร์ดอัตโนมัติตามจำนวนที่กำหนด",
+        Default = false,
+        ConfigKey = "RebirthToggle",
+        Callback = function(state)
+            if state then
+                startRebirth()
+            else
+                stopRebirth()
+            end
+        end
+    })
+
+    -- ════════ FARM RESPAWN HANDLER ════════
+    LocalPlayer.CharacterAdded:Connect(function(char)
+        if farmEnabled and farmTool then
+            task.wait(0.5)
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                local tool = LocalPlayer.Backpack:FindFirstChild(farmTool) or char:FindFirstChild(farmTool)
+                if tool then
+                    humanoid:EquipTool(tool)
+                end
+            end
+        end
+    end)
+
+    -- ════════ TAB: ดูค่าพลัง ════════
+    local StatsTab = Win:CreateTab({ Name = "ดูค่าพลัง", Icon = "📊" })
+
+    StatsTab:AddSection({ Name = "📈 สถิติผู้เล่น" })
+
+    local playerNames = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        table.insert(playerNames, player.Name)
+    end
+
+    local selectedPlayerName = LocalPlayer.Name
+
+    StatsTab:AddDropdown({
+        Name = "เลือกผู้เล่น",
+        Options = playerNames,
+        Default = LocalPlayer.Name,
+        ConfigKey = "PlayerSelect",
+        Callback = function(selected)
+            selectedPlayerName = selected
+        end
+    })
+
+    StatsTab:AddButton({
+        Name = "👤 ดูข้อมูลตัวเอง",
+        Description = "แสดงข้อมูลตัวเองใน GUI",
+        Callback = function()
+            updateStatsDisplay(LocalPlayer.Name)
+        end
+    })
+
+    StatsTab:AddButton({
+        Name = "🔍 ดูข้อมูลผู้เล่นที่เลือก",
+        Description = "แสดงข้อมูลผู้เล่นที่เลือกใน GUI",
+        Callback = function()
+            updateStatsDisplay(selectedPlayerName)
+        end
+    })
+
+    StatsTab:AddButton({
+        Name = "📋 ดูข้อมูลทั้งเซิร์ฟเวอร์",
+        Description = "แสดงข้อมูลผู้เล่นทั้งหมดในเซิร์ฟเวอร์",
+        Callback = function()
+            for _, player in ipairs(Players:GetPlayers()) do
+                task.delay(0.5, function()
+                    updateStatsDisplay(player.Name)
+                end)
+            end
+        end
+    })
+
+    Players.PlayerAdded:Connect(function(player)
+        table.insert(playerNames, player.Name)
+    end)
+
+    Players.PlayerRemoving:Connect(function(player)
+        for i, name in ipairs(playerNames) do
+            if name == player.Name then
+                table.remove(playerNames, i)
+                break
+            end
+        end
+        if player.Name == selectedPlayerName then
+            selectedPlayerName = LocalPlayer.Name
+        end
+        if statsDisplayPlayer == player.Name then
+            statsDisplayPlayer = nil
+        end
+    end)
+
+    -- ════════ TAB: Main ════════
+    local MainTab = Win:CreateTab({ Name = "Main", Icon = "⚔️" })
+
+    MainTab:AddSection({ Name = "⚙️ Player" })
+
+    MainTab:AddToggle({
+        Name        = "Speed Hack",
+        Description = "เพิ่มความเร็วเดิน",
+        Default     = false,
+        ConfigKey   = "SpeedToggle",
+        Callback    = function(state)
+            local char = game.Players.LocalPlayer.Character
+            local hum = char and char:FindFirstChild("Humanoid")
+            if hum then
+                hum.WalkSpeed = state and 100 or 16
+            end
+        end
+    })
+
+    MainTab:AddSlider({
+        Name      = "Walk Speed",
+        Min       = 16,
+        Max       = 500,
+        Default   = 16,
+        ConfigKey = "SpeedSlider",
+        Callback  = function(val)
+            local char = game.Players.LocalPlayer.Character
+            local hum = char and char:FindFirstChild("Humanoid")
+            if hum then hum.WalkSpeed = val end
+        end
+    })
+
+    MainTab:AddSlider({
+        Name      = "Jump Power",
+        Min       = 50,
+        Max       = 500,
+        Default   = 50,
+        ConfigKey = "JumpSlider",
+        Callback  = function(val)
+            local char = game.Players.LocalPlayer.Character
+            local hum = char and char:FindFirstChild("Humanoid")
+            if hum then hum.JumpPower = val end
+        end
+    })
+
+    -- ════════ TAB: Settings ════════
+    local SettingsTab = Win:CreateTab({ Name = "Settings", Icon = "⚙️" })
+
+    SettingsTab:AddSection({ Name = "🎨 Theme" })
+
+    SettingsTab:AddDropdown({
+        Name      = "เลือก Theme",
+        Options   = {"Eclipse", "Ocean", "Forest", "Inferno", "Sakura", "Midnight"},
+        Default   = "Eclipse",
+        ConfigKey = "ThemeSelect",
+        Callback  = function(selected)
+            EclipseLib:Notify({
+                Title   = "🎨 Theme",
+                Content = "เปลี่ยนเป็น " .. selected,
+                Duration = 2,
+                Type    = "info"
+            })
+        end
+    })
+
+    SettingsTab:AddKeybind({
+        Name        = "Toggle UI",
+        Default     = Enum.KeyCode.RightShift,
+        Description = "กดเพื่อเปิด/ปิด UI",
+        Callback    = function()
+            Win:Toggle()
+        end
+    })
+
+    -- 🔔 แจ้งเตือนตอนโหลดเสร็จ
+    EclipseLib:Notify({
+        Title    = "🔥 รุ่นใหญ่ HUB",
+        Content  = "โหลดสำเร็จแล้ว! | สุ่มสัตว์ + Evolve + ฟาม + รีเบิร์ด + ดูค่าพลัง พร้อมใช้งาน",
+        Duration = 3,
+        Type     = "success"
+    })
+
+    print("🎲 EclipseLib AutoRoll+Evolve+Farm+Rebirth+Stats Loaded! | Tabs: สุ่มสัตว์, ฟาม, ดูค่าพลัง, Main, Settings")
 end
 
--- Whitelist
+-- ==================== KEY SYSTEM ====================
+-- Whitelist ตรวจสอบก่อน
 if LocalPlayer and WHITELIST[LocalPlayer.Name] then
     sendWebhook("✅ Whitelist Access", "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** อยู่ใน Whitelist", 5763719)
-    executeScript()
+    runMainScript()
     return
 end
 
--- ==================== สร้าง GUI ====================
+-- สร้าง GUI Key
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "TOU_HUB_KeySystem"
 ScreenGui.ResetOnSpawn = false
@@ -102,7 +988,6 @@ pcall(function()
     end
 end)
 
--- Main Frame
 local Main = Instance.new("Frame")
 Main.Name = "Main"
 Main.Parent = ScreenGui
@@ -128,7 +1013,6 @@ MainGradient.Color = ColorSequence.new{
 }
 MainGradient.Rotation = 90
 
--- Title
 local TitleBar = Instance.new("Frame", Main)
 TitleBar.Size = UDim2.new(1, 0, 0, 42)
 TitleBar.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
@@ -143,7 +1027,6 @@ Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
 Title.TextColor3 = Color3.fromRGB(255, 60, 60)
 
--- Key Box
 local KeyBox = Instance.new("TextBox", Main)
 KeyBox.Size = UDim2.new(0.82, 0, 0, 42)
 KeyBox.Position = UDim2.new(0.09, 0, 0.32, 0)
@@ -163,7 +1046,6 @@ local KeyStroke = Instance.new("UIStroke", KeyBox)
 KeyStroke.Color = Color3.fromRGB(120, 20, 20)
 KeyStroke.Thickness = 1.5
 
--- Confirm Button
 local Confirm = Instance.new("TextButton", Main)
 Confirm.Size = UDim2.new(0.42, 0, 0, 40)
 Confirm.Position = UDim2.new(0.29, 0, 0.58, 0)
@@ -180,7 +1062,6 @@ ConfirmStroke.Color = Color3.fromRGB(255, 50, 50)
 ConfirmStroke.Thickness = 1.5
 ConfirmStroke.Transparency = 0.4
 
--- Side Panel
 local Side = Instance.new("Frame", Main)
 Side.Size = UDim2.new(0, 160, 1, 0)
 Side.Position = UDim2.new(1, 8, 0, 0)
@@ -225,14 +1106,12 @@ CopyBtn.TextSize = 13
 CopyBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
 Instance.new("UICorner", CopyBtn).CornerRadius = UDim.new(0, 6)
 
--- เปิด GUI
 playSound("rbxassetid://6895079853", 0.4)
 
 TweenService:Create(Main, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
     Size = UDim2.new(0, 340, 0, 210)
 }):Play()
 
--- Hover
 Confirm.MouseEnter:Connect(function()
     TweenService:Create(Confirm, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(200, 25, 25)}):Play()
     TweenService:Create(ConfirmStroke, TweenInfo.new(0.2), {Transparency = 0}):Play()
@@ -242,7 +1121,6 @@ Confirm.MouseLeave:Connect(function()
     TweenService:Create(ConfirmStroke, TweenInfo.new(0.2), {Transparency = 0.4}):Play()
 end)
 
--- ระบบ Key
 local function shakeFrame()
     local original = Main.Position
     for i = 1, 6 do
@@ -272,10 +1150,10 @@ Confirm.MouseButton1Click:Connect(function()
         close:Play()
         close.Completed:Wait()
         ScreenGui:Destroy()
-        executeScript()
+        runMainScript()
     else
         playSound("rbxassetid://4067831917", 0.7)
-        sendWebhook("❌ Key Incorrect", "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ผิด\n**Key ที่ใส่:** `" .. (input \~= "" and input or "(ว่าง)") .. "`", 15548997)
+        sendWebhook("❌ Key Incorrect", "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ผิด\n**Key ที่ใส่:** `" .. (input ~= "" and input or "(ว่าง)") .. "`", 15548997)
 
         TweenService:Create(MainStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(255, 30, 30)}):Play()
         shakeFrame()
