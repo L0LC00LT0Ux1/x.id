@@ -14,7 +14,6 @@ local loadstring = loadstring or load
 local WHITELIST = {
     ["HGVGGGG61"] = true,
     ["KlDC00I_333"] = true,
-    ["Wsghoi2744"] = true,
 }
 
 -- 🔑 Config
@@ -546,7 +545,7 @@ local function executeScript()
         return box
     end
 
-    -- 🛠️ FIXED TOOL SELECTOR DROPDOWN
+    -- 🛠️ FIXED TOOL SELECTOR DROPDOWN (แก้ไขตำแหน่งตำแหน่งขยับตามปุ่ม)
     local function addToolSelector(parent, labelText, options, defaultOption, callback)
         local frame = Instance.new("Frame")
         frame.Size = UDim2.new(1, -6, 0, 42)
@@ -598,10 +597,8 @@ local function executeScript()
         end)
         
         local function updatePos()
-            if dropFrame.Visible then
-                local absPos = btn.AbsolutePosition
-                dropFrame.Position = UDim2.new(0, absPos.X, 0, absPos.Y + btn.AbsoluteSize.Y + 5)
-            end
+            local absPos = btn.AbsolutePosition
+            dropFrame.Position = UDim2.new(0, absPos.X, 0, absPos.Y + btn.AbsoluteSize.Y + 5)
         end
         table.insert(dropdownUpdateCallbacks, updatePos)
         
@@ -631,8 +628,8 @@ local function executeScript()
         btn.MouseButton1Click:Connect(function()
             if not dropFrame.Visible then
                 updateDropdownList()
-                updatePos()
                 dropFrame.Visible = true
+                updatePos()
             else
                 dropFrame.Visible = false
             end
@@ -641,7 +638,7 @@ local function executeScript()
         return frame
     end
 
-    -- 🛠️ FIXED PLAYER SELECTOR DROPDOWN
+    -- 🛠️ FIXED PLAYER SELECTOR DROPDOWN (แก้ไขตำแหน่งขยับตามปุ่มเลือกชื่อผู้เล่น)
     local function addPlayerSelector(parent, labelText, callback)
         local frame = Instance.new("Frame")
         frame.Size = UDim2.new(1, -6, 0, 42)
@@ -693,10 +690,8 @@ local function executeScript()
         end)
         
         local function updatePos()
-            if dropFrame.Visible then
-                local absPos = btn.AbsolutePosition
-                dropFrame.Position = UDim2.new(0, absPos.X, 0, absPos.Y + btn.AbsoluteSize.Y + 5)
-            end
+            local absPos = btn.AbsolutePosition
+            dropFrame.Position = UDim2.new(0, absPos.X, 0, absPos.Y + btn.AbsoluteSize.Y + 5)
         end
         table.insert(dropdownUpdateCallbacks, updatePos)
         
@@ -726,8 +721,8 @@ local function executeScript()
         btn.MouseButton1Click:Connect(function()
             if not dropFrame.Visible then
                 updateDropdownList()
-                updatePos()
                 dropFrame.Visible = true
+                updatePos()
             else
                 dropFrame.Visible = false
             end
@@ -815,6 +810,7 @@ local function executeScript()
 
     local lastHealth = 100
     local healthConn = nil
+    local isKnockbackLocked = false
     local savedPosBeforeRebirth = nil
     local isMonitoringRebirthTp = false
 
@@ -1223,7 +1219,7 @@ local function executeScript()
         end)
     end
 
-    -- Anti Knockback
+    -- 🛠️ FIXED ANTI-KNOCKBACK (ล็อคตัวละคร 0.5 วินาทีเมื่อเลือดลด แล้วหยุดล็อคทันทีแม้เลือดไม่เต็ม)
     local function setupAntiKnockback(char)
         if not char then return end
         local humanoid = char:WaitForChild("Humanoid", 5)
@@ -1235,13 +1231,16 @@ local function executeScript()
 
         healthConn = humanoid.HealthChanged:Connect(function(newHealth)
             if antiKnockbackEnabled and newHealth < lastHealth then
-                local currentAnchored = root.Anchored
-                root.Anchored = true
-                task.delay(0.5, function()
-                    if root and root.Parent then
-                        root.Anchored = currentAnchored
-                    end
-                end)
+                if not isKnockbackLocked then
+                    isKnockbackLocked = true
+                    root.Anchored = true
+                    task.delay(0.5, function()
+                        if root and root.Parent then
+                            root.Anchored = false
+                        end
+                        isKnockbackLocked = false
+                    end)
+                end
             end
             lastHealth = newHealth
         end)
@@ -2106,7 +2105,7 @@ local function shakeFrame()
     Main.Position = original
 end
 
--- 🛠️ FIXED KEY CHECKER FUNCTION (แก้ไขจุด Confirm:Activate() และ Error nil value)
+-- 🛠️ FIXED KEY CHECKER FUNCTION
 local function processKeyCheck()
     playSound("rbxassetid://6895079853", 0.5)
     local input = KeyBox.Text
