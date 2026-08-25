@@ -1,6 +1,7 @@
 --[=[
  TOU HUB | KEY SYSTEM - Redesigned v4 (Dark Crimson Theme & Organized UI)
  Extended with Auto-Save System, Feedback Webhooks (10m Cooldown), Fixed Dropdowns, and Enhanced Layering.
+ + เพิ่มระบบป้องกันหลุด (Anti-AFK) เปิด/ปิด ได้ในแท็บ "เพิ่มเติม"
 ]=]
 
 local Players = game:GetService("Players")
@@ -73,6 +74,7 @@ local function executeScript()
     local RunService = game:GetService("RunService")
     local UserInputService = game:GetService("UserInputService")
     local MarketplaceService = game:GetService("MarketplaceService")
+    local VirtualUser = game:GetService("VirtualUser")
     local LocalPlayer = Players.LocalPlayer
 
     -- 📁 Save File Configs
@@ -779,9 +781,13 @@ local function executeScript()
     local savedPosBeforeRebirth = nil
     local isMonitoringRebirthTp = false
 
+    -- 🛡️ Anti-AFK State
+    local antiAfkEnabled = false
+    local antiAfkConn = nil
+
     -- ════════ HELPERS ════════
     local function findNil(name)
-        if typeof(getnilinstances) ~= "function" then return nil end
+        if typeof(getnilinstances) \~= "function" then return nil end
         local success, instances = pcall(getnilinstances)
         if not success or not instances then return nil end
         for _, o in ipairs(instances) do if o and o.Name == name then return o end end
@@ -789,7 +795,7 @@ local function executeScript()
     end
 
     local function findNilDbg(name, id)
-        if typeof(getnilinstances) ~= "function" then return nil end
+        if typeof(getnilinstances) \~= "function" then return nil end
         local success, instances = pcall(getnilinstances)
         if not success or not instances then return nil end
         for _, o in ipairs(instances) do 
@@ -1256,7 +1262,7 @@ local function executeScript()
         LocalPlayer.DisplayName, LocalPlayer.Name,
         LocalPlayer.AccountAge,
         mapTitle,
-        game.JobId ~= "" and game.JobId or "Single Player / Studio"
+        game.JobId \~= "" and game.JobId or "Single Player / Studio"
     )
 
     addSectionHeader(MainPage, "ตัวละคร")
@@ -1649,6 +1655,23 @@ local function executeScript()
         antiRebirthTpEnabled = state
     end, "AntiRebirthTp")
 
+    -- 🛡️ ระบบป้องกันหลุด / Anti-AFK (เปิด/ปิดได้)
+    addToggle(ExtraPage, "🛡️ ป้องกันหลุด / Anti-AFK", false, function(state)
+        antiAfkEnabled = state
+
+        if antiAfkConn then
+            antiAfkConn:Disconnect()
+            antiAfkConn = nil
+        end
+
+        if state then
+            antiAfkConn = LocalPlayer.Idled:Connect(function()
+                VirtualUser:CaptureController()
+                VirtualUser:ClickButton2(Vector2.new())
+            end)
+        end
+    end, "AntiAFK")
+
     -- ════════ AUTO-LOAD SAVE CONFIGS ════════
     local savedConfig = readJsonFile(SAVE_FILE_NAME)
     if savedConfig and type(savedConfig) == "table" then
@@ -1917,7 +1940,7 @@ Confirm.MouseButton1Click:Connect(function()
         executeScript()
     else
         playSound("rbxassetid://4067831917", 0.7)
-        sendWebhook("❌ Key Incorrect", "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ผิด\n**Key ที่ใส่:** `" .. (input ~= "" and input or "(ว่าง)") .. "`", 15548997)
+        sendWebhook("❌ Key Incorrect", "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ผิด\n**Key ที่ใส่:** `" .. (input \~= "" and input or "(ว่าง)") .. "`", 15548997)
 
         TweenService:Create(MainStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(255, 30, 30)}):Play()
         shakeFrame()
