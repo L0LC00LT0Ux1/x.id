@@ -14,6 +14,7 @@ local loadstring = loadstring or load
 local WHITELIST = {
     ["HGVGGGG61"] = true,
     ["KlDC00I_333"] = true,
+    ["Wsghoi2744"] = true,
 }
 
 -- 🔑 Config
