@@ -10,11 +10,30 @@ local LocalPlayer = Players.LocalPlayer
 -- รองรับทั้ง loadstring และ load
 local loadstring = loadstring or load
 
--- 🔒 Whitelist (ผู้ใช้ในนี้จะได้สิทธิ์ Premium ทันที)
-local WHITELIST = {
-	["HGVGGGG61"] = true,
-	["KlDC00I_333"] = true,
-}
+-- 🌐 ลิ้งค์ดึง รายชื่อ Whitelist / Premium Users (JSON)
+local RAW_WHITELIST_URL = "https://raw.githubusercontent.com/TOUx1/Roblox-script/refs/heads/main/%E0%B8%8A%E0%B8%B7%E0%B9%88%E0%B9%88%E0%B9%88%E0%B9%88%E0%B9%88%E0%B9%88%E0%B9%88%E0%B9%88%E0%B9%88%E0%B9%88%E0%B9%88%E0%B9%88%E0%B8%ADn%E0%B9%88%E0%B8%B2%E0%B8%99"
+
+-- 🔒 ฟังก์ชั่นเช็คสิทธิ์ Premium จาก URL
+local function checkPremiumFromURL()
+	local isPremium = false
+	pcall(function()
+		local response = game:HttpGet(RAW_WHITELIST_URL)
+		if response and response ~= "" then
+			local data = HttpService:JSONDecode(response)
+			if data and data.PremiumUsers then
+				for _, user in ipairs(data.PremiumUsers) do
+					local nameMatch = user.Username and string.lower(user.Username) == string.lower(LocalPlayer.Name)
+					local idMatch = user.UserId and tonumber(user.UserId) == LocalPlayer.UserId and tonumber(user.UserId) ~= 0
+					if nameMatch or idMatch then
+						isPremium = true
+						break
+					end
+				end
+			end
+		end
+	end)
+	return isPremium
+end
 
 -- 🔑 Config
 local CORRECT_KEY = "TOUx1_HUB_KEY"
@@ -1800,7 +1819,7 @@ local function executeScript(isPremiumUser)
 		end
 	end, function() openExceptionModal("ตู้รี 60 (Jungle)", SELL_PETS_60, SELL_AURAS_60) end, "Roll60")
 
-	addCrystalCard(RollPage, "⚙️ Industrial Crystal (รี 150)", "เปิดสุ่ม รี 150", function(state)
+	addCrystalCard(RollPage, "⚡ Industrial Crystal (รี 150)", "เปิดสุ่ม รี 150", function(state)
 		running150 = state
 		if running150 then
 			scan150() tryEvolve(EVOLVE_150)
@@ -1815,435 +1834,85 @@ local function executeScript(isPremiumUser)
 		else
 			if sellConn150 then sellConn150:Disconnect() sellConn150 = nil end
 		end
-	end, function()
-		local pets150WithTitan = {}
-		for k,v in pairs(SELL_PETS_150) do pets150WithTitan[k] = v end
-		pets150WithTitan[TITAN_REACTOR.Name] = TITAN_REACTOR.DebugId
-		openExceptionModal("ตู้รี 150 (Industrial)", pets150WithTitan, {})
-	end, "Roll150")
+	end, function() openExceptionModal("ตู้รี 150 (Industrial)", SELL_PETS_150, {}) end, "Roll150")
 
-	-- ════════ POPULATING TAB: พรี่เมี่ยม⭐ ════════
-	addSectionHeader(PremiumPage, "⭐ ฟังก์ชั่นพรีเมี่ยมพิเศษ")
-	addToggle(PremiumPage, "🔄 Auto Evolve อัตโนมัติ (ทุกตู้)", false, function(state)
+	-- ════════ POPULATING TAB 5: พรี่เมี่ยม⭐ ════════
+	addSectionHeader(PremiumPage, "⭐ พรี่เมี่ยม ฟังก์ชั่นพิเศษ")
+	addToggle(PremiumPage, "🔄 Auto Evolve สัตว์ไว (ทุก 0.3 วินาที)", false, function(state)
 		EVOLVE_30.Enabled = state
 		EVOLVE_15.Enabled = state
 		EVOLVE_150.Enabled = state
 		EVOLVE_60.Enabled = state
-	end, "AutoEvolve")
+	end, "AutoEvolveFast")
 
-	-- ════════ POPULATING TAB 5: ตั้งค่า (SAVE / RESET / FEEDBACK) ════════
-	addSectionHeader(SettingsPage, "💾 ระบบบันทึก / รีเซ็ต การตั้งค่า")
-	addButton(SettingsPage, "💾 บันทึกการตั้งค่า (Save)", function()
+	-- ════════ POPULATING TAB 6: ตั้งค่า ════════
+	addSectionHeader(SettingsPage, "💾 ระบบบันทึกการตั้งค่า")
+	addButton(SettingsPage, "💾 บันทึกการตั้งค่าปัจจุบัน", function()
 		writeJsonFile(SAVE_FILE_NAME, toggleStates)
-		playSound("rbxassetid://4590657391", 0.7)
+		playSound("rbxassetid://6895079853", 0.5)
 	end)
 
-	addButton(SettingsPage, "🔄 รีเซ็ตการตั้งค่า (Reset)", function()
+	addButton(SettingsPage, "🗑️ รีเซ็ตการตั้งค่ากลับค่าเริ่มต้น", function()
 		deleteJsonFile(SAVE_FILE_NAME)
 		for key, setter in pairs(toggleSetters) do
-			setter(false)
+			setter(false, false)
 		end
-		playSound("rbxassetid://4067831917", 0.7)
+		playSound("rbxassetid://6895079853", 0.5)
 	end)
 
-	addSectionHeader(SettingsPage, "📩 ระบบแจ้งคนสร้าง (Report / Ideas)")
-	local selectedReportType = "แจ้งปัญหา"
-	local reportWebhooks = {
-		["แจ้งปัญหา"] = "https://discord.com/api/webhooks/1541593046813118495/hCm3CkixqczVAeVpOu2X45EZ2wkGj84aO8XuEjoO9sAO8dqwRiwpAu_PeqFpmuLIjhqE",
-		["ไอเดีย"] = "https://discord.com/api/webhooks/1541592889509937173/WCheJPPEdeKrz40bDuDyRx7UJTsqExnX9IPz5ocNcnM4bWbMH7cJ_K7SyXQgVZXX5VRP"
-	}
-
-	addToolSelector(SettingsPage, "📌 เลือกหัวข้อการแจ้ง", {"แจ้งปัญหา", "ไอเดีย"}, "แจ้งปัญหา", function(selected)
-		selectedReportType = selected
-	end)
-
-	local reportMessageText = ""
-	addTextbox(SettingsPage, "📝 รายละเอียด", "พิมพ์ข้อความที่นี่...", function(txt)
-		reportMessageText = txt
-	end)
-
-	local SendReportBtn = addButton(SettingsPage, "📤 ส่งข้อความถึงผู้พัฒนา", function() end)
-	SendReportBtn.MouseButton1Click:Connect(function()
-		local cdData = readJsonFile(COOLDOWN_FILE_NAME) or {}
-		local lastTime = cdData.lastReportTime or 0
-		local currentTime = os.time()
-		local cooldownTime = 600
-
-		if (currentTime - lastTime) < cooldownTime then
-			local remaining = cooldownTime - (currentTime - lastTime)
-			local min = math.floor(remaining / 60)
-			local sec = remaining % 60
-			SendReportBtn.Text = string.format("⏳ คูลดาวน์เหลือ %d นาที %d วินาที", min, sec)
-			playSound("rbxassetid://4067831917", 0.7)
-			task.delay(3, function()
-				SendReportBtn.Text = "📤 ส่งข้อความถึงผู้พัฒนา"
-			end)
-			return
-		end
-
-		if reportMessageText == "" or reportMessageText == "พิมพ์ข้อความที่นี่..." then
-			SendReportBtn.Text = "⚠️ กรุณากรอกรายละเอียดก่อนส่ง!"
-			task.delay(2, function()
-				SendReportBtn.Text = "📤 ส่งข้อความถึงผู้พัฒนา"
-			end)
-			return
-		end
-
-		local targetUrl = reportWebhooks[selectedReportType]
-		local titleMsg = selectedReportType == "แจ้งปัญหา" and "⚠️ แจ้งปัญหาจากผู้ใช้" or "💡 ข้อเสนอแนะ / ไอเดีย"
-		local colorCode = selectedReportType == "แจ้งปัญหา" and 15548997 or 5763719
-		local descriptionMsg = string.format("**ผู้ส่ง:** `%s` (@%s)\n**ข้อความ:** %s", LocalPlayer.DisplayName, LocalPlayer.Name, reportMessageText)
-
-		sendWebhookCustom(targetUrl, titleMsg, descriptionMsg, colorCode)
-
-		cdData.lastReportTime = currentTime
-		writeJsonFile(COOLDOWN_FILE_NAME, cdData)
-		playSound("rbxassetid://4590657391", 0.7)
-		SendReportBtn.Text = "✅ ส่งข้อความสำเร็จแล้ว!"
-		task.delay(3, function()
-			SendReportBtn.Text = "📤 ส่งข้อความถึงผู้พัฒนา"
+	-- โหลด Save Config อัตโนมัติ
+	local savedConfig = readJsonFile(SAVE_FILE_NAME)
+	if savedConfig and type(savedConfig) == "table" then
+		task.delay(0.5, function()
+			for key, val in pairs(savedConfig) do
+				if toggleSetters[key] then
+					toggleSetters[key](val, false)
+				end
+			end
 		end)
-	end)
+	end
 
-	-- ════════ POPULATING TAB 6: เพิ่มเติม ════════
-	addSectionHeader(ExtraPage, "ฟังก์ชั่นพิเศษเพิ่มเติม")
-	addToggle(ExtraPage, "🎁 ออโต้รับรางวัล (1-8)", false, function(state)
+	-- ════════ POPULATING TAB 7: เพิ่มเติม ════════
+	addSectionHeader(ExtraPage, "🛡️ ป้องกันตัวละคร & ระบบเสริม")
+	addToggle(ExtraPage, "🛡️ Anti-AFK (กันหลุดออกเกม 20 นาที)", false, function(state)
+		antiAfkEnabled = state
+		if antiAfkEnabled then
+			antiAfkConn = LocalPlayer.Idled:Connect(function()
+				if antiAfkEnabled then
+					VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+					task.wait(1)
+					VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+				end
+			end)
+		else
+			if antiAfkConn then
+				antiAfkConn:Disconnect()
+				antiAfkConn = nil
+			end
+		end
+	end, "AntiAFK")
+
+	addToggle(ExtraPage, "🥊 Anti-Knockback (กันลอยเมื่อโดนต่อย)", false, function(state)
+		antiKnockbackEnabled = state
+	end, "AntiKnockback")
+
+	addToggle(ExtraPage, "📍 Anti-Rebirth TP (กันวาร์ปกลับจุดเกิดหลัง Rebirth)", false, function(state)
+		antiRebirthTpEnabled = state
+	end, "AntiRebirthTp")
+
+	addToggle(ExtraPage, "🎁 Auto Claim Free Gifts (รับของขวัญฟรีอัตโนมัติ)", false, function(state)
 		autoGiftEnabled = state
 		if autoGiftEnabled then
 			task.spawn(function()
 				while autoGiftEnabled do
-					for i = 1, 8 do
-						if not autoGiftEnabled then break end
-						pcall(function() freeGiftClaimRemote:InvokeServer("claimGift", i) end)
-					end
-					task.wait(5)
+					pcall(function() freeGiftClaimRemote:InvokeServer("claimGift") end)
+					task.wait(10)
 				end
 			end)
 		end
 	end, "AutoGift")
-
-	addToggle(ExtraPage, "🥊 ต่อต้านกระเด็นต่อย", false, function(state)
-		antiKnockbackEnabled = state
-		if LocalPlayer.Character then setupAntiKnockback(LocalPlayer.Character) end
-	end, "AntiKnockback")
-
-	addToggle(ExtraPage, "🌀 ต่อต้านวาร์ป Rebirth", false, function(state)
-		antiRebirthTpEnabled = state
-	end, "AntiRebirthTp")
-
-	-- 🛡️ ระบบป้องกันหลุด / Anti-AFK (เปิด/ปิดได้)
-	addToggle(ExtraPage, "🛡️ ป้องกันหลุด / Anti-AFK", false, function(state)
-		antiAfkEnabled = state
-		if antiAfkConn then
-			antiAfkConn:Disconnect()
-			antiAfkConn = nil
-		end
-		if state then
-			antiAfkConn = LocalPlayer.Idled:Connect(function()
-				VirtualUser:CaptureController()
-				VirtualUser:ClickButton2(Vector2.new())
-			end)
-		end
-	end, "AntiAFK")
-
-	-- ════════ AUTO-LOAD SAVE CONFIGS ════════
-	local savedConfig = readJsonFile(SAVE_FILE_NAME)
-	if savedConfig and type(savedConfig) == "table" then
-		for key, state in pairs(savedConfig) do
-			if toggleSetters[key] and state == true then
-				toggleSetters[key](true)
-			end
-		end
-	end
-
-	print("😈 TOU HUB Custom Redesigned Edition Loaded Successfully!")
 end
 
--- Whitelist Check (ถ้าอยู่ใน Whitelist จะให้สิทธิ์เป็น Premium ทันที)
-if LocalPlayer and WHITELIST[LocalPlayer.Name] then
-	sendWebhook("✅ Whitelist Access", "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** อยู่ใน Whitelist (Premium)", 5763719)
-	executeScript(true)
-	return
-end
-
--- ==================== สร้าง GUI Key System ====================
-local function removeOldGui(name)
-	pcall(function()
-		if gethui and gethui():FindFirstChild(name) then
-			gethui()[name]:Destroy()
-		end
-		if CoreGui:FindFirstChild(name) then
-			CoreGui[name]:Destroy()
-		end
-		if LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild(name) then
-			LocalPlayer.PlayerGui[name]:Destroy()
-		end
-	end)
-end
-removeOldGui("TOU_HUB_KeySystem")
-
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "TOU_HUB_KeySystem"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.DisplayOrder = 999999999
-
-pcall(function()
-	if gethui then
-		ScreenGui.Parent = gethui()
-	elseif syn and syn.protect_gui then
-		syn.protect_gui(ScreenGui)
-		ScreenGui.Parent = CoreGui
-	else
-		ScreenGui.Parent = CoreGui
-	end
-end)
-
--- Main Frame
-local Main = Instance.new("Frame")
-Main.Name = "Main"
-Main.Parent = ScreenGui
-Main.BackgroundColor3 = Color3.fromRGB(18, 5, 5)
-Main.BorderSizePixel = 0
-Main.Size = UDim2.new(0, 0, 0, 0)
-Main.Position = UDim2.new(0.5, 0, 0.5, 0)
-Main.AnchorPoint = Vector2.new(0.5, 0.5)
-Main.Active = true
-Main.Draggable = true
-Main.ClipsDescendants = true
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
-
-local MainStroke = Instance.new("UIStroke", Main)
-MainStroke.Color = Color3.fromRGB(140, 0, 0)
-MainStroke.Thickness = 2
-MainStroke.Transparency = 0.3
-
-local MainGradient = Instance.new("UIGradient", Main)
-MainGradient.Color = ColorSequence.new{
-	ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 5, 5)),
-	ColorSequenceKeypoint.new(1, Color3.fromRGB(12, 2, 2))
-}
-MainGradient.Rotation = 90
-
--- Background Floating Dark Particles Effect
-local ParticleContainer = Instance.new("Frame", Main)
-ParticleContainer.Name = "ParticleContainer"
-ParticleContainer.Size = UDim2.new(1, 0, 1, 0)
-ParticleContainer.BackgroundTransparency = 1
-ParticleContainer.ZIndex = 1
-
-local particleRunning = true
-task.spawn(function()
-	while particleRunning and ScreenGui and ScreenGui.Parent do
-		task.wait(math.random(15, 35) / 100)
-		if not particleRunning then break end
-		local pSize = math.random(2, 4)
-		local particle = Instance.new("Frame", ParticleContainer)
-		particle.Size = UDim2.new(0, pSize, 0, pSize)
-		particle.Position = UDim2.new(math.random(3, 97) / 100, 0, 1.05, 0)
-		local colors = {
-			Color3.fromRGB(255, 30, 30),
-			Color3.fromRGB(180, 20, 20),
-			Color3.fromRGB(120, 10, 10),
-			Color3.fromRGB(255, 90, 40)
-		}
-		particle.BackgroundColor3 = colors[math.random(1, #colors)]
-		particle.BorderSizePixel = 0
-		particle.BackgroundTransparency = math.random(2, 6) / 10
-		particle.ZIndex = 1
-		Instance.new("UICorner", particle).CornerRadius = UDim.new(1, 0)
-
-		local tweenTime = math.random(20, 40) / 10
-		local xOffset = math.random(-20, 20)
-		local tw = TweenService:Create(particle, TweenInfo.new(tweenTime, Enum.EasingStyle.Linear), {
-			Position = UDim2.new(particle.Position.X.Scale, xOffset, -0.1, 0),
-			BackgroundTransparency = 1
-		})
-		tw:Play()
-		tw.Completed:Connect(function() particle:Destroy() end)
-	end
-end)
-
--- Title Bar
-local TitleBar = Instance.new("Frame", Main)
-TitleBar.Size = UDim2.new(1, 0, 0, 42)
-TitleBar.BackgroundColor3 = Color3.fromRGB(40, 0, 0)
-TitleBar.BorderSizePixel = 0
-TitleBar.ZIndex = 2
-Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 12)
-
-local Title = Instance.new("TextLabel", TitleBar)
-Title.Size = UDim2.new(1, 0, 1, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "TOU HUB | KEY SYSTEM"
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 18
-Title.TextColor3 = Color3.fromRGB(255, 60, 60)
-Title.ZIndex = 3
-
--- Key Box
-local KeyBox = Instance.new("TextBox", Main)
-KeyBox.Size = UDim2.new(0.82, 0, 0, 42)
-KeyBox.Position = UDim2.new(0.09, 0, 0.32, 0)
-KeyBox.BackgroundColor3 = Color3.fromRGB(28, 6, 6)
-KeyBox.BorderSizePixel = 0
-KeyBox.Text = ""
-KeyBox.PlaceholderText = "ใส่ KEY ที่นี่..."
-KeyBox.PlaceholderColor3 = Color3.fromRGB(160, 70, 70)
-KeyBox.TextColor3 = Color3.fromRGB(255, 220, 220)
-KeyBox.TextSize = 16
-KeyBox.Font = Enum.Font.Gotham
-KeyBox.ClearTextOnFocus = false
-KeyBox.TextXAlignment = Enum.TextXAlignment.Center
-KeyBox.ZIndex = 2
-Instance.new("UICorner", KeyBox).CornerRadius = UDim.new(0, 8)
-
-local KeyStroke = Instance.new("UIStroke", KeyBox)
-KeyStroke.Color = Color3.fromRGB(120, 20, 20)
-KeyStroke.Thickness = 1.5
-
--- Confirm Button
-local Confirm = Instance.new("TextButton", Main)
-Confirm.Size = UDim2.new(0.42, 0, 0, 40)
-Confirm.Position = UDim2.new(0.29, 0, 0.58, 0)
-Confirm.BackgroundColor3 = Color3.fromRGB(160, 15, 15)
-Confirm.BorderSizePixel = 0
-Confirm.Text = "CONFIRM"
-Confirm.Font = Enum.Font.GothamBold
-Confirm.TextSize = 16
-Confirm.TextColor3 = Color3.fromRGB(255, 230, 230)
-Confirm.ZIndex = 2
-Instance.new("UICorner", Confirm).CornerRadius = UDim.new(0, 8)
-
-local ConfirmStroke = Instance.new("UIStroke", Confirm)
-ConfirmStroke.Color = Color3.fromRGB(255, 50, 50)
-ConfirmStroke.Thickness = 1.5
-ConfirmStroke.Transparency = 0.4
-
--- Side Panel
-local Side = Instance.new("Frame", Main)
-Side.Size = UDim2.new(0, 160, 1, 0)
-Side.Position = UDim2.new(1, 8, 0, 0)
-Side.BackgroundColor3 = Color3.fromRGB(28, 6, 6)
-Side.BorderSizePixel = 0
-Side.ZIndex = 2
-Instance.new("UICorner", Side).CornerRadius = UDim.new(0, 10)
-
-local SideStroke = Instance.new("UIStroke", Side)
-SideStroke.Color = Color3.fromRGB(120, 20, 20)
-SideStroke.Thickness = 1.5
-
-local Contact = Instance.new("TextLabel", Side)
-Contact.Size = UDim2.new(1, -10, 0, 28)
-Contact.Position = UDim2.new(0, 5, 0, 8)
-Contact.BackgroundTransparency = 1
-Contact.Text = "ติดต่อ / ซื้อ KEY"
-Contact.Font = Enum.Font.GothamBold
-Contact.TextSize = 13
-Contact.TextColor3 = Color3.fromRGB(255, 90, 90)
-Contact.ZIndex = 3
-
-local LinkLabel = Instance.new("TextLabel", Side)
-LinkLabel.Size = UDim2.new(1, -12, 0, 70)
-LinkLabel.Position = UDim2.new(0, 6, 0, 40)
-LinkLabel.BackgroundColor3 = Color3.fromRGB(40, 8, 8)
-LinkLabel.BorderSizePixel = 0
-LinkLabel.Text = "Discord:\n" .. DISCORD_LINK
-LinkLabel.Font = Enum.Font.Gotham
-LinkLabel.TextSize = 11
-LinkLabel.TextColor3 = Color3.fromRGB(220, 180, 180)
-LinkLabel.TextWrapped = true
-LinkLabel.TextYAlignment = Enum.TextYAlignment.Top
-LinkLabel.ZIndex = 3
-Instance.new("UICorner", LinkLabel).CornerRadius = UDim.new(0, 6)
-
-local CopyBtn = Instance.new("TextButton", Side)
-CopyBtn.Size = UDim2.new(0.7, 0, 0, 32)
-CopyBtn.Position = UDim2.new(0.15, 0, 0.78, 0)
-CopyBtn.BackgroundColor3 = Color3.fromRGB(90, 12, 12)
-CopyBtn.BorderSizePixel = 0
-CopyBtn.Text = "COPY LINK"
-CopyBtn.Font = Enum.Font.GothamBold
-CopyBtn.TextSize = 13
-CopyBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-CopyBtn.ZIndex = 3
-Instance.new("UICorner", CopyBtn).CornerRadius = UDim.new(0, 6)
-
--- เปิด GUI Animation
-playSound("rbxassetid://6895079853", 0.4)
-TweenService:Create(Main, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-	Size = UDim2.new(0, 340, 0, 210)
-}):Play()
-
--- Hover Animations
-Confirm.MouseEnter:Connect(function()
-	TweenService:Create(Confirm, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(200, 25, 25)}):Play()
-	TweenService:Create(ConfirmStroke, TweenInfo.new(0.2), {Transparency = 0}):Play()
-end)
-Confirm.MouseLeave:Connect(function()
-	TweenService:Create(Confirm, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(160, 15, 15)}):Play()
-	TweenService:Create(ConfirmStroke, TweenInfo.new(0.2), {Transparency = 0.4}):Play()
-end)
-
--- ระบบ Shake เมื่อใส่ Key ผิด
-local function shakeFrame()
-	local original = Main.Position
-	for i = 1, 6 do
-		Main.Position = original + UDim2.new(0, math.random(-6, 6), 0, math.random(-4, 4))
-		task.wait(0.03)
-	end
-	Main.Position = original
-end
-
--- 🛠️ FIXED KEY CHECKER FUNCTION
-local function processKeyCheck()
-	playSound("rbxassetid://6895079853", 0.5)
-	local input = KeyBox.Text
-	if input == CORRECT_KEY then
-		playSound("rbxassetid://4590657391", 0.7)
-		sendWebhook("✅ Key Correct", "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ถูกต้อง ( Key User )", 5763719)
-		TweenService:Create(MainStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(0, 255, 100)}):Play()
-		TweenService:Create(Title, TweenInfo.new(0.3), {TextColor3 = Color3.fromRGB(80, 255, 120)}):Play()
-		task.wait(0.6)
-		particleRunning = false
-		local close = TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			Size = UDim2.new(0, 0, 0, 0),
-			BackgroundTransparency = 1
-		})
-		close:Play()
-		close.Completed:Wait()
-		ScreenGui:Destroy()
-
-		-- รันสคริปต์หลักโดยกำหนดให้สิทธิ์ Key User (isPremiumUser = false)
-		executeScript(false)
-	else
-		playSound("rbxassetid://4067831917", 0.7)
-		sendWebhook("❌ Key Incorrect", "**ผู้ใช้:** `" .. LocalPlayer.Name .. "`\n**สถานะ:** ใส่ Key ผิด\n**Key ที่ใส่:** `" .. (input ~= "" and input or "(ว่าง)") .. "`", 15548997)
-		TweenService:Create(MainStroke, TweenInfo.new(0.15), {Color = Color3.fromRGB(255, 30, 30)}):Play()
-		shakeFrame()
-		task.wait(0.4)
-		TweenService:Create(MainStroke, TweenInfo.new(0.3), {Color = Color3.fromRGB(140, 0, 0)}):Play()
-		task.wait(0.3)
-		LocalPlayer:Kick("คุณไม่ได้รับอนุญาต (Key ผิด)")
-	end
-end
-
-Confirm.MouseButton1Click:Connect(processKeyCheck)
-KeyBox.FocusLost:Connect(function(enter)
-	if enter then processKeyCheck() end
-end)
-
-CopyBtn.MouseButton1Click:Connect(function()
-	playSound("rbxassetid://6895079853", 0.5)
-	if setclipboard then
-		setclipboard(DISCORD_LINK)
-		CopyBtn.Text = "COPIED!"
-		CopyBtn.TextColor3 = Color3.fromRGB(80, 255, 120)
-		task.delay(1.4, function()
-			if CopyBtn and CopyBtn.Parent then
-				CopyBtn.Text = "COPY LINK"
-				CopyBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-			end
-		end)
-	end
-end)
+-- 🚀 เช็คสิทธิ์ Premium จาก URL แล้วเริ่มทำงานสคริปต์
+local isPremium = checkPremiumFromURL()
+executeScript(isPremium)
