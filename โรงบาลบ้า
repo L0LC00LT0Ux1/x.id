@@ -1,5 +1,5 @@
 --// ============================================================
---//  🧹 MOP + ESCAPE + HELP + DETAIN + FARM MOR  (v32 Farm Fix)
+--//  🧹 MOP + ESCAPE + HELP + DETAIN + FARM MOR  (v33 Farm Pullback)
 --// ============================================================
 
 local genv = (getgenv and getgenv()) or _G
@@ -42,11 +42,11 @@ local CFG = {
     ESCAPE_AVOID_RANGE = 60,
     -- ✅ Route C (v31 tuned)
     ESCAPE_ROUTE_C_HIDEOUT = Vector3.new(291.28, 293.94, -586.04),
-    ESCAPE_ROUTE_C_HIDEOUT_SPEED = 80,   -- ✅ waypoint 1 = 80
-    ESCAPE_ROUTE_C_END_WAIT = 0,         -- ✅ ไม่รอ → วาป hideout ทันที
-    ESCAPE_ROUTE_C_HIDEOUT_WAIT = 60,    -- ✅ รอ 60 วิ
-    ESCAPE_ROUTE_C_FAST_START_IDX = 10,  -- ✅ เริ่มเร็ว 40 ที่ waypoint 10
-    ESCAPE_ROUTE_C_FAST_SPEED = 40,      -- ✅ ความเร็วท่อนท้าย
+    ESCAPE_ROUTE_C_HIDEOUT_SPEED = 80,
+    ESCAPE_ROUTE_C_END_WAIT = 0,
+    ESCAPE_ROUTE_C_HIDEOUT_WAIT = 60,
+    ESCAPE_ROUTE_C_FAST_START_IDX = 10,
+    ESCAPE_ROUTE_C_FAST_SPEED = 40,
     ESCAPE_ROUTE_C_HIDEOUT_PLATFORM = Vector3.new(20, 4, 20),
     ESCAPE_ROUTES = {
         a = {
@@ -68,7 +68,7 @@ local CFG = {
             Vector3.new(-3.87, 517.48, 457.34),
         },
         c = {
-            Vector3.new(291.28, 293.94, -586.04),   -- 1  (80) ⭐ จุดเริ่ม hideout
+            Vector3.new(291.28, 293.94, -586.04),   -- 1  (80) hideout
             Vector3.new(245.94, 300.27, -583.86),   -- 2  (30)
             Vector3.new(51.45, 287.22, -457.73),    -- 3  (30)
             Vector3.new(41.43, 303.93, -457.20),    -- 4  (30)
@@ -77,7 +77,7 @@ local CFG = {
             Vector3.new(-20.92, 517.00, -406.22),   -- 7  (30)
             Vector3.new(-23.83, 571.25, -404.29),   -- 8  (30)
             Vector3.new(-219.59, 572.00, -396.38),  -- 9  (30)
-            Vector3.new(-789.02, 525.00, -171.77),  -- 10 (40) ⭐
+            Vector3.new(-789.02, 525.00, -171.77),  -- 10 (40)
             Vector3.new(-0.88, 517.48, 459.38),     -- 11 (40)
             Vector3.new(-0.88, 509.48, 459.38),     -- 12 (40) จุดสุดท้าย
         },
@@ -127,9 +127,12 @@ local CFG = {
         Vector3.new(-89.48, 248.50, -330.93),
     },
     FARM_NEAR_DIST = 6,
-    FARM_TP_SPEED = 40,             -- healer
-    FARM_TP_SPEED_TARGET = 85,      -- ✅ target เร็ว 85
+    FARM_TP_SPEED = 40,                    -- healer
+    FARM_TP_SPEED_TARGET = 70,             -- ✅ 85 → 70
     FARM_TP_MIN_DUR = 0.3,
+    FARM_TP_PULLBACK_THRESHOLD = 8,        -- ✅ ตรวจจับถูกดึงกลับ
+    FARM_TP_PULLBACK_COOLDOWN = 0.15,      -- ✅ cooldown ก่อน retry
+    FARM_TP_MAX_RETRY = 6,                 -- ✅ retry สูงสุดต่อ waypoint
     FARM_HEAL_RANGE = 15,
     FARM_HEAL_DELAY = 0.15,
     FARM_SCAN_INTERVAL = 0.15,
@@ -1318,7 +1321,6 @@ local function runEscapeLoop()
                     local r2 = c2 and c2:FindFirstChild("HumanoidRootPart")
                     if not r2 then break end
                     local startDist = (r2.Position - pos).Magnitude
-                    -- ✅ Speed: waypoint 1 = 80, waypoint >= 10 = 40, อื่นๆ = 30
                     local wpSpeed = CFG.ESCAPE_SPEED
                     if i == 1 then
                         wpSpeed = CFG.ESCAPE_ROUTE_C_HIDEOUT_SPEED
@@ -1360,7 +1362,6 @@ local function runEscapeLoop()
                 if died or not stillOn() then break end
                 if needSwitch then break end
 
-                -- ✅ ถ้า END_WAIT > 0 ค่อยรอ / ถ้า 0 ข้ามไปวาป hideout ทันที
                 if CFG.ESCAPE_ROUTE_C_END_WAIT > 0 then
                     local t0 = os.clock()
                     while stillOn() and not died and os.clock() - t0 < CFG.ESCAPE_ROUTE_C_END_WAIT do
@@ -1374,7 +1375,6 @@ local function runEscapeLoop()
 
                 ensureHideoutPlatform(hideout)
 
-                -- ✅ รอ 60 วิ ที่ hideout
                 local t1 = os.clock()
                 while stillOn() and not died and os.clock() - t1 < CFG.ESCAPE_ROUTE_C_HIDEOUT_WAIT do
                     task.wait(0.5)
@@ -1482,7 +1482,7 @@ local function setCharCollide(char, state)
     end
 end
 
--- ✅ รับ speed เป็น parameter
+-- ✅ teleportWaypoints + ระบบดักจับ "ถูกดึงกลับ" แล้ว retry จากตำแหน่งปัจจุบัน
 local function teleportWaypoints(my, waypoints, speed)
     if not waypoints or #waypoints == 0 then return false end
     speed = speed or CFG.FARM_TP_SPEED
@@ -1499,37 +1499,70 @@ local function teleportWaypoints(my, waypoints, speed)
     local ok = true
     for idx, target in ipairs(waypoints) do
         if not isAlive(my) then ok = false; break end
-        local c2 = player.Character
-        local r2 = c2 and c2:FindFirstChild("HumanoidRootPart")
-        if not c2 or not r2 then ok = false; break end
 
-        local startDist = (r2.Position - target).Magnitude
-        local dur = math.max(startDist / speed, CFG.FARM_TP_MIN_DUR)  -- ✅ ใช้ speed ที่รับมา
+        local reached = false
+        local retries = 0
+        local maxRetry = CFG.FARM_TP_MAX_RETRY or 6
 
-        local dir = target - r2.Position
-        local flat = Vector3.new(dir.X, 0, dir.Z)
-        local lookAt = flat.Magnitude > 0.05 and (target + flat) or (target + dir)
-        local targetCF = CFrame.new(target, lookAt)
+        -- ✅ retry loop: ถ้าโดนดึงกลับ จะเริ่มวาปใหม่จากตำแหน่งปัจจุบันทันที
+        while not reached and isAlive(my) and retries < maxRetry do
+            local c2 = player.Character
+            local r2 = c2 and c2:FindFirstChild("HumanoidRootPart")
+            if not c2 or not r2 then ok = false; break end
 
-        local tw = TweenService:Create(r2, TweenInfo.new(dur, Enum.EasingStyle.Linear), { CFrame = targetCF })
-        S.farmTween = tw
-        tw:Play()
+            local startDist = (r2.Position - target).Magnitude
+            local dur = math.max(startDist / speed, CFG.FARM_TP_MIN_DUR)
 
-        local finished = false
-        local con
-        con = tw.Completed:Connect(function() finished = true end)
-        local t0 = os.clock()
-        while isAlive(my) and not finished do
-            if os.clock() - t0 > 30 then break end
-            if player.Character ~= c2 then ok = false; break end
-            task.wait(0.05)
+            local dir = target - r2.Position
+            local flat = Vector3.new(dir.X, 0, dir.Z)
+            local lookAt = flat.Magnitude > 0.05 and (target + flat) or (target + dir)
+            local targetCF = CFrame.new(target, lookAt)
+
+            local tw = TweenService:Create(r2, TweenInfo.new(dur, Enum.EasingStyle.Linear), { CFrame = targetCF })
+            S.farmTween = tw
+            tw:Play()
+
+            local finished, pulledBack = false, false
+            local con
+            con = tw.Completed:Connect(function() finished = true end)
+            local t0 = os.clock()
+            local lastDist = startDist
+            while isAlive(my) and not finished do
+                if os.clock() - t0 > 30 then break end
+                if player.Character ~= c2 then ok = false; break end
+                task.wait(0.05)
+                local rr = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                if not rr then break end
+                local curDist = (rr.Position - target).Magnitude
+                -- ✅ ระยะเพิ่มขึ้นเกิน threshold = ถูกดึงกลับ
+                if curDist - lastDist > CFG.FARM_TP_PULLBACK_THRESHOLD then
+                    pulledBack = true
+                    break
+                end
+                lastDist = curDist
+            end
+            if con then con:Disconnect() end
+            S.farmTween = nil
+
+            if not ok or not isAlive(my) then break end
+
+            if finished and not pulledBack then
+                reached = true
+            elseif pulledBack then
+                -- ✅ ยกเลิก tween แล้วรอ cooldown แล้ววน retry (จากตำแหน่งปัจจุบัน)
+                if tw then pcall(function() tw:Cancel() end) end
+                task.wait(CFG.FARM_TP_PULLBACK_COOLDOWN or 0.15)
+                retries = retries + 1
+            else
+                -- timeout / char เปลี่ยน
+                break
+            end
         end
-        if con then con:Disconnect() end
-        S.farmTween = nil
 
         if not ok or not isAlive(my) then break end
 
-        if idx == #waypoints then
+        -- สแนปต์ตำแหน่งเป๊ะๆ หลังถึง waypoint สุดท้าย
+        if idx == #waypoints and reached then
             local cf = player.Character
             local rf = cf and cf:FindFirstChild("HumanoidRootPart")
             if rf then
@@ -1588,7 +1621,6 @@ local function runFarmRoutine(my, role)
     if S.farmRunning then return end
     S.farmRunning = true
 
-    -- ✅ แยก speed target(85) / healer(40)
     local isTarget = (role == "target")
     local waypoints = isTarget and CFG.FARM_TARGET_WAYPOINTS or CFG.FARM_HEALER_WAYPOINTS
     local tpSpeed   = isTarget and CFG.FARM_TP_SPEED_TARGET or CFG.FARM_TP_SPEED
@@ -2813,7 +2845,6 @@ local function onCharacterAdded(char)
                 S.escapeAutoSwitch = autoSwitch or false
             elseif S.choice == "farm" then
                 local role = askFarmRole(my)
-                -- ✅ เก็บค่าเดิม / default target ถ้าตายตอนเลือกครั้งแรก
                 S.farmRole = role or S.farmRole or "target"
                 if not isAlive(my) then return end
             end
@@ -2833,12 +2864,10 @@ local function onCharacterAdded(char)
         elseif S.choice == "help" then
             runHelpRoutine(my)
         elseif S.choice == "farm" then
-            -- ✅ ถ้า S.farmRole ยังเป็น nil (ตายตอนเปิด GUI เลือกครั้งแรก) → ถามใหม่
-            --    กันบั๊กวาปผิดเส้น (target กลายเป็น healer)
             if not S.farmRole then
                 local role = askFarmRole(my)
                 if not isAlive(my) then return end
-                S.farmRole = role or "target"  -- default = target
+                S.farmRole = role or "target"
             end
             S.farmRunning = false
             S.farmToolIndex = 1
