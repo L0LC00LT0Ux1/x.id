@@ -1,5 +1,5 @@
 --// ============================================================
---//  🧹 MOP + ESCAPE + HELP + DETAIN + FARM MOR  (v26 Auto Heal Style)
+--//  🧹 MOP + ESCAPE + HELP + DETAIN + FARM MOR  (v27 Route C)
 --// ============================================================
 
 local genv = (getgenv and getgenv()) or _G
@@ -35,7 +35,9 @@ local CFG = {
     STARE_RANGE = 30, STARE_ANGLE_DEG = 25, STARE_TRIGGER_TIME = 3,
     LOOK_AT_DURATION = 5,
     AGENT_RADIUS = 2, AGENT_HEIGHT = 5, LOOKAHEAD_DIST = 4, WAYPOINT_TIMEOUT = 4,
+    -- ✅ Escape speeds
     ESCAPE_SPEED = 30,
+    ESCAPE_ROUTE_C_FIRST_SPEED = 80,   -- ✅ ความเร็วพิเศษจุดแรกของเส้น C
     ESCAPE_HOLD_TIME = 60, ESCAPE_PULLBACK_THRESHOLD = 8, ESCAPE_PULLBACK_COOLDOWN = 0.15,
     ESCAPE_PLATFORM_SIZE = Vector3.new(30, 4, 30), ESCAPE_PLATFORM_GAP = 3,
     ESCAPE_AVOID_ENABLED = true,
@@ -59,6 +61,20 @@ local CFG = {
             Vector3.new(406.71, 527.77, 220.51), Vector3.new(193.50, 518.02, 490.86),
             Vector3.new(-3.87, 517.48, 457.34),
         },
+        -- ✅ เส้นทาง C (ใหม่)
+        c = {
+            Vector3.new(291.28, 293.94, -586.04),  -- จุดเริ่ม (speed 80)
+            Vector3.new(245.94, 300.27, -583.86),  -- จุดที่ 2 (speed กลับเป็น 30)
+            Vector3.new(51.45, 287.22, -457.73),
+            Vector3.new(41.43, 303.93, -457.20),
+            Vector3.new(-17.95, 305.50, -396.18),
+            Vector3.new(-20.92, 305.80, -406.22),
+            Vector3.new(-20.92, 517.00, -406.22),
+            Vector3.new(-23.83, 571.25, -404.29),
+            Vector3.new(-219.59, 572.00, -396.38),
+            Vector3.new(-789.02, 525.00, -171.77),
+            Vector3.new(-0.88, 509.48, 459.38),    -- จุดสุดท้าย
+        },
     },
     ADMIN_NAMES = {
         ["heavenlyarbiter"]=true,["remarkablebeauty"]=true,["worldobliterator6526"]=true,
@@ -73,7 +89,6 @@ local CFG = {
     AUTO_TOOL_RANGE = 5,
     AUTO_TOOL_RANGE_MIN = 1, AUTO_TOOL_RANGE_MAX = 50,
     AUTO_HEAL_THRESHOLD = 0.5,
-    -- ✅ เรียงตามลำดับการวน (Quick-Fix → Medical Kit → Large Medical Kit)
     HEAL_TOOLS = { "Quick-Fix", "Medical Kit", "Large Medical Kit" },
     HEAL_DELAY = 0.15, HEAL_RESTORE_DELAY = 0.25,
     WEAPON_PATHS = {
@@ -109,12 +124,12 @@ local CFG = {
     FARM_NEAR_DIST = 6,
     FARM_TP_SPEED = 40,
     FARM_TP_MIN_DUR = 0.3,
-    FARM_HEAL_RANGE = 15,        -- ✅ ระยะ heal (Auto Heal style)
+    FARM_HEAL_RANGE = 15,
     FARM_HEAL_DELAY = 0.15,
     FARM_SCAN_INTERVAL = 0.15,
     FARM_KEEP_NEAR = 8,
     FARM_EQUIP_TIMEOUT = 2.0,
-    FARM_SWITCH_DELAY = 0.15,    -- ✅ หน่วงเวลาสลับ tool
+    FARM_SWITCH_DELAY = 0.15,
 }
 
 local GUI_SIZES = {
@@ -158,15 +173,18 @@ local LOC = {
         langEnglish = "🇬🇧 English", langEnglishDesc = "ใช้อินเทอร์เฟซภาษาอังกฤษ",
         modeTitle = "เลือกโหมดการทำงาน",
         modeMop = "🧹 ถูพื้น", modeMopDesc = "ไปหยิบไม้ถูแล้วเริ่มถูอัตโนมัติ",
-        modeEscape = "🏃 หนีออก", modeEscapeDesc = "ขยับตัวหนีตามเส้นทาง (ฉลาดสลับเส้นอัตโนมัติ)",
+        modeEscape = "🏃 หนีออก", modeEscapeDesc = "ขยับตัวหนีตามเส้นทาง",
         modeHelp = "🩺 ช่วยเล่น", modeHelpDesc = "เปิดศูนย์ช่วยเล่น",
         modeFarm = "🩺 ฟามหมอ", modeFarmDesc = "ต้องใช้ 2 รหัส — วาปเรียง waypoints + เพิ่มเลือด",
         farmRoleTitle = "เลือกฝั่งที่จะเป็น",
         farmRoleTarget = "🎯 คนที่จะโดนเพิ่มเลือด", farmRoleTargetDesc = "วาปเรียง waypoints → ยืนรอรับเลือด",
         farmRoleHealer = "🩹 คนเพิ่มเลือดให้ผู้เล่น", farmRoleHealerDesc = "วาปเรียง waypoints → เพิ่มเลือดคนเจ็บใกล้สุด",
         routeTitle = "เลือกเส้นทางหนีออก",
-        routeA = "⚡ เส้นทาง A (เร็ว)", routeADesc = "เส้นหลัก — ถ้ามีคนจะสลับ B อัตโนมัติ",
+        routeA = "⚡ เส้นทาง A (เร็ว)", routeADesc = "เส้นหลัก — มีคนจะสลับอัตโนมัติ",
         routeB = "🛡️ เส้นทาง B (สำรอง)", routeBDesc = "ใช้ตอนเส้น A มีคน",
+        routeC = "🔥 เส้นทาง C (ระเบิด)", routeCDesc = "จุดแรก speed 80 → หลังจากนั้น 30",
+        escapeAutoSwitch = "🔄 สลับเส้นอัตโนมัติเมื่อเจอคน",
+        escapeAutoSwitchDesc = "ติ้กถูก = สลับไปเส้นที่ปลอดคน | ไม่ติ้ก = ตามเส้นที่เลือก",
         stop = "⛔ หยุด", madeBy = "สร้างโดย TOUx1", elapsed = "ทำงานมาแล้ว",
         tab1 = "🩺 ช่วยเล่น", tab2 = "⚙ ตั้งค่า",
         helpTitle = "🧠 ศูนย์ช่วยเล่น",
@@ -214,15 +232,18 @@ local LOC = {
         langEnglish = "🇬🇧 English", langEnglishDesc = "Use English interface",
         modeTitle = "Select Mode",
         modeMop = "🧹 Mop", modeMopDesc = "Auto clean spills",
-        modeEscape = "🏃 Escape", modeEscapeDesc = "Auto route switch when near players",
+        modeEscape = "🏃 Escape", modeEscapeDesc = "Auto route switching",
         modeHelp = "🩺 Help Play", modeHelpDesc = "Open help hub",
         modeFarm = "🩺 Farm Medic", modeFarmDesc = "Requires 2 accounts — waypoints + heal",
         farmRoleTitle = "Choose your role",
         farmRoleTarget = "🎯 Heal Target", farmRoleTargetDesc = "Waypoints → wait to be healed",
         farmRoleHealer = "🩹 Healer", farmRoleHealerDesc = "Waypoints → heal nearest injured",
         routeTitle = "Select Escape Route",
-        routeA = "⚡ Route A (Fast)", routeADesc = "Primary — auto-switch to B if spotted",
+        routeA = "⚡ Route A (Fast)", routeADesc = "Primary — auto-switch if watched",
         routeB = "🛡️ Route B (Backup)", routeBDesc = "Used when Route A is watched",
+        routeC = "🔥 Route C (Blitz)", routeCDesc = "First point speed 80 → then 30",
+        escapeAutoSwitch = "🔄 Auto-switch route when watched",
+        escapeAutoSwitchDesc = "Check = pick safest route | Uncheck = follow selected",
         stop = "⛔ STOP", madeBy = "Made by TOUx1", elapsed = "Elapsed",
         tab1 = "🩺 Play", tab2 = "⚙ Settings",
         helpTitle = "🧠 Help Hub",
@@ -283,6 +304,7 @@ local S = {
     lookingAt = nil, lookUntil = 0, mopTrack = nil,
     lang = nil,
     choice = nil, escapeRoute = nil, farmRole = nil,
+    escapeAutoSwitch = false,   -- ✅ ใหม่
     escapeStarted = false, escapeTween = nil, escapeMoving = false,
     escapePlatform = nil, startTime = nil, infoGui = nil, infoTimerLabel = nil,
     helpGui = nil, helpMiniToggle = nil, helpFrame = nil,
@@ -308,7 +330,6 @@ local S = {
     _lastLockOn = false, _lastLockNear = false,
     farmTween = nil,
     farmRunning = false,
-    -- ✅ tool switch state
     farmToolIndex = 1,
     farmLastTarget = nil,
 }
@@ -480,6 +501,7 @@ local function saveConfig()
         guiSize=S.guiSize, lockTeamFilter=S.lockTeamFilter, whitelist=S.whitelist,
         miniLocked=S.miniLocked, miniPositions=miniPos,
         detainOn=S.detainOn, detainRange=S.detainRange,
+        escapeAutoSwitch=S.escapeAutoSwitch,
     }
     return pcall(function() writefile(SAVE_FILE, HttpService:JSONEncode(data)) end)
 end
@@ -532,6 +554,7 @@ local function resetConfig()
     S.guiSize="medium"; S.lockTeamFilter={}; S.lockNearestTarget=nil
     S.whitelist={}; S.miniLocked=false; S.miniPositions={}
     S.detainOn=false; S.detainRange=CFG.DETAIN_RANGE
+    S.escapeAutoSwitch=false
     for k,_ in pairs(S.miniFuncs) do S.miniFuncs[k]=false end
     S.miniOn=false
 end
@@ -765,21 +788,64 @@ local function askFarmRole(my)
     return picked
 end
 
+-- ✅ askEscapeRoute with checkbox + route C
 local function askEscapeRoute(my)
     local t = L()
-    local gui = newGui("MopKitRoute", 997)
-    local frame = mkPanel(gui, UDim2.fromOffset(300, 190))
+    local gui = newGui("MopKitRoute", 998)
+    local frame = mkPanel(gui, UDim2.fromOffset(320, 350))
     mkPanelTitle(frame, t.routeTitle)
+
+    -- ✅ Checkbox: auto-switch
+    local autoSwitch = S.escapeAutoSwitch or false
+    local chkBtn = Instance.new("TextButton", frame)
+    chkBtn.Size = UDim2.new(1, -28, 0, 32)
+    chkBtn.Position = UDim2.new(0, 14, 0, 40)
+    chkBtn.BackgroundColor3 = Color3.fromRGB(30, 12, 18)
+    chkBtn.Font = Enum.Font.GothamBold
+    chkBtn.TextSize = 11
+    chkBtn.TextColor3 = C_TEXT
+    chkBtn.TextXAlignment = Enum.TextXAlignment.Left
+    chkBtn.BorderSizePixel = 0
+    chkBtn.AutoButtonColor = false
+    local cc = Instance.new("UICorner", chkBtn)
+    cc.CornerRadius = UDim.new(0, 6)
+    local pad = Instance.new("UIPadding", chkBtn)
+    pad.PaddingLeft = UDim.new(0, 10)
+    local function updChk()
+        chkBtn.Text = (autoSwitch and "☑ " or "☐ ") .. t.escapeAutoSwitch
+        chkBtn.BackgroundColor3 = autoSwitch and Color3.fromRGB(50, 30, 90) or Color3.fromRGB(30, 12, 18)
+    end
+    updChk()
+    chkBtn.Activated:Connect(function()
+        autoSwitch = not autoSwitch
+        updChk()
+    end)
+
+    -- description text
+    local descLbl = Instance.new("TextLabel", frame)
+    descLbl.Size = UDim2.new(1, -28, 0, 14)
+    descLbl.Position = UDim2.new(0, 14, 0, 74)
+    descLbl.BackgroundTransparency = 1
+    descLbl.Font = Enum.Font.Gotham
+    descLbl.TextSize = 10
+    descLbl.TextColor3 = C_TEXT_DIM
+    descLbl.TextXAlignment = Enum.TextXAlignment.Left
+    descLbl.Text = t.escapeAutoSwitchDesc
+
     local btnA = mkCardButton(frame, t.routeA, t.routeADesc, C_RED,
-        UDim2.new(0, 14, 0, 46), UDim2.new(1, -28, 0, 54))
+        UDim2.new(0, 14, 0, 96), UDim2.new(1, -28, 0, 54))
     local btnB = mkCardButton(frame, t.routeB, t.routeBDesc, C_RED_SOFT,
-        UDim2.new(0, 14, 0, 108), UDim2.new(1, -28, 0, 54))
+        UDim2.new(0, 14, 0, 158), UDim2.new(1, -28, 0, 54))
+    local btnC = mkCardButton(frame, t.routeC, t.routeCDesc, C_AMBER,
+        UDim2.new(0, 14, 0, 220), UDim2.new(1, -28, 0, 54))
+
     local picked = nil
     btnA.Activated:Connect(function() picked = "a" end)
     btnB.Activated:Connect(function() picked = "b" end)
+    btnC.Activated:Connect(function() picked = "c" end)
     while isAlive(my) and not picked do task.wait(0.1) end
     pcall(function() gui:Destroy() end)
-    return picked
+    return picked, autoSwitch
 end
 
 local function startInfoOverlay()
@@ -1099,12 +1165,42 @@ local function nearestEscapePointIndex(pos, points)
     end
     return bestIdx
 end
+
+-- ✅ Helper: find safest route at index i
+local function findSafestRouteAt(idx, excludeKey)
+    local bestKey, bestDist = nil, math.huge
+    for rk, rpoints in pairs(CFG.ESCAPE_ROUTES) do
+        if rk ~= excludeKey and rpoints[idx] then
+            local pos = rpoints[idx]
+            -- หาระยะห่างจากคนที่ใกล้สุด
+            local minDist = math.huge
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= player then
+                    local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        local d = (hrp.Position - pos).Magnitude
+                        if d < minDist then minDist = d end
+                    end
+                end
+            end
+            if minDist >= CFG.ESCAPE_AVOID_RANGE then
+                return rk  -- ปลอดภัยพอ
+            end
+            if minDist > bestDist then
+                bestDist = minDist
+                bestKey = rk
+            end
+        end
+    end
+    -- ถ้าไม่มีเส้นที่ปลอด 100% ให้เลือกที่ห่างคนที่สุด
+    if bestKey and bestDist > 0 then return bestKey end
+    return nil
+end
+
 local function runEscapeLoop()
     local function stillOn() return (not S.stopped) and S.choice == "escape" end
     local routeKey = S.escapeRoute or "a"
-    local primary = CFG.ESCAPE_ROUTES[routeKey] or CFG.ESCAPE_ROUTES.a
-    local altKey = (routeKey == "a") and "b" or "a"
-    local alt = CFG.ESCAPE_ROUTES[altKey] or CFG.ESCAPE_ROUTES.b
+
     while stillOn() do
         local char = player.Character
         if not char then
@@ -1116,8 +1212,9 @@ local function runEscapeLoop()
         if not hum or not root then task.wait(1) continue end
         if hum.Health <= 0 then pcall(function() player.CharacterAdded:Wait() end); task.wait(1) continue end
         hum.AutoRotate = false; S.escapeMoving = false
-        local activeRoute = primary
-        local isUsingAlt = false
+
+        -- ✅ เริ่มจาก route ที่เลือก
+        local activeRouteKey = routeKey
         local supportCon = startEscapeSupport(stillOn)
         local died = false
         local deathConn = hum.Died:Connect(function()
@@ -1125,33 +1222,36 @@ local function runEscapeLoop()
             if S.escapeTween then pcall(function() S.escapeTween:Cancel() end) end
         end)
         local completedAll = true; local i = 1
-        while stillOn() and i <= #activeRoute and not died do
-            if CFG.ESCAPE_AVOID_ENABLED and not isUsingAlt then
-                local targetPrimary = activeRoute[i]
-                if targetPrimary and not pointIsSafe(targetPrimary, CFG.ESCAPE_AVOID_RANGE) then
-                    local altPoint = alt[i]
-                    if altPoint and pointIsSafe(altPoint, CFG.ESCAPE_AVOID_RANGE) then
-                        activeRoute = alt
-                        isUsingAlt = true
-                    end
-                end
-            end
-            if CFG.ESCAPE_AVOID_ENABLED and isUsingAlt then
-                local targetAlt = activeRoute[i]
-                if targetAlt and not pointIsSafe(targetAlt, CFG.ESCAPE_AVOID_RANGE) then
-                    local aPoint = primary[i]
-                    if aPoint and pointIsSafe(aPoint, CFG.ESCAPE_AVOID_RANGE) then
-                        activeRoute = primary
-                        isUsingAlt = false
-                    end
-                end
-            end
+        while stillOn() and not died do
+            local activeRoute = CFG.ESCAPE_ROUTES[activeRouteKey]
+            if not activeRoute or i > #activeRoute then break end
             local pos = activeRoute[i]
+
+            -- ✅ Auto-switch logic
+            if S.escapeAutoSwitch and pos then
+                local safe = pointIsSafe(pos, CFG.ESCAPE_AVOID_RANGE)
+                if not safe then
+                    local newKey = findSafestRouteAt(i, activeRouteKey)
+                    if newKey then
+                        activeRouteKey = newKey
+                        local r2 = CFG.ESCAPE_ROUTES[activeRouteKey]
+                        pos = r2[i] or pos
+                    end
+                end
+            end
+
             local c = player.Character
             local r = c and c:FindFirstChild("HumanoidRootPart")
             if not r then completedAll = false break end
             local startDist = (r.Position - pos).Magnitude
-            local dur = math.max(startDist / CFG.ESCAPE_SPEED, 0.05)
+
+            -- ✅ Speed: route C จุดแรก = 80
+            local wpSpeed = CFG.ESCAPE_SPEED
+            if activeRouteKey == "c" and i == 1 then
+                wpSpeed = CFG.ESCAPE_ROUTE_C_FIRST_SPEED
+            end
+
+            local dur = math.max(startDist / wpSpeed, 0.05)
             local dir = pos - r.Position
             local flat = Vector3.new(dir.X, 0, dir.Z)
             local lookAt = flat.Magnitude > 0.05 and (pos + flat) or (pos + dir)
@@ -1178,8 +1278,11 @@ local function runEscapeLoop()
                 S.escapeTween = nil
                 task.wait(CFG.ESCAPE_PULLBACK_COOLDOWN)
                 local rr = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                if rr then i = nearestEscapePointIndex(rr.Position, activeRoute) end
-            else S.escapeTween = nil; i = i + 1 end
+                if rr then i = nearestEscapePointIndex(rr.Position, CFG.ESCAPE_ROUTES[activeRouteKey]) end
+            else
+                S.escapeTween = nil
+                i = i + 1
+            end
         end
         if supportCon then supportCon:Disconnect() end
         deathConn:Disconnect()
@@ -1205,7 +1308,7 @@ local function runEscapeLoop()
     destroyEscapePlatform()
 end
 
--- ✅ ฟามหมอ helpers
+-- ✅ ฟามหมอ helpers (เหมือน v26)
 local function setCharCollide(char, state)
     if not char then return end
     for _, part in ipairs(char:GetDescendants()) do
@@ -1260,7 +1363,6 @@ local function teleportWaypoints(my, waypoints)
 
         if not ok or not isAlive(my) then break end
 
-        -- จุดสุดท้าย → เซ็ตเป๊ะ
         if idx == #waypoints then
             local cf = player.Character
             local rf = cf and cf:FindFirstChild("HumanoidRootPart")
@@ -1280,56 +1382,21 @@ local function teleportWaypoints(my, waypoints)
     return ok
 end
 
--- ✅ equip tool แบบวน + รอติดมือ
-local function equipHealToolAndWait(timeout)
-    local char = player.Character
-    local bp = player:FindFirstChild("Backpack")
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not char or not hum then return false, nil end
-
-    -- ถืออยู่แล้ว?
-    for _, tn in ipairs(CFG.HEAL_TOOLS) do
-        if char:FindFirstChild(tn) then return true, tn end
-    end
-
-    -- ล้างของเดิมในมือ
-    pcall(function() hum:UnequipTools() end)
-    task.wait(0.05)
-
-    for _, tn in ipairs(CFG.HEAL_TOOLS) do
-        local t = bp and bp:FindFirstChild(tn)
-        if t and t:IsA("Tool") then
-            pcall(function() hum:EquipTool(t) end)
-            local t0 = os.clock()
-            local to = timeout or CFG.FARM_EQUIP_TIMEOUT
-            while os.clock() - t0 < to do
-                if char:FindFirstChild(tn) then return true, tn end
-                task.wait(0.05)
-            end
-        end
-    end
-    return false, nil
-end
-
--- ✅ equip tool วน — Quick-Fix → Medical Kit → Large Medical Kit
 local function equipHealToolCycle()
     local char = player.Character
     local bp = player:FindFirstChild("Backpack")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not char or not hum then return false, nil end
 
-    -- ตรวจว่าไอเทมในมือเป็นตัวไหน
     local heldName
     for _, tn in ipairs(CFG.HEAL_TOOLS) do
         if char:FindFirstChild(tn) then heldName = tn; break end
     end
 
-    -- ถ้าไม่ได้ถือ heal tool อยู่ → เริ่มจาก index 1
     if not heldName then
         S.farmToolIndex = 1
     end
 
-    -- ลองทุก tool ตามลำดับ (เริ่มจาก index ปัจจุบัน)
     for attempt = 0, #CFG.HEAL_TOOLS - 1 do
         local idx = ((S.farmToolIndex - 1 + attempt) % #CFG.HEAL_TOOLS) + 1
         local tn = CFG.HEAL_TOOLS[idx]
@@ -1342,7 +1409,6 @@ local function equipHealToolCycle()
             local t0 = os.clock()
             while os.clock() - t0 < CFG.FARM_EQUIP_TIMEOUT do
                 if char:FindFirstChild(tn) then
-                    -- ✅ สำเร็จ → เลื่อน index ไปตัวถัดไปสำหรับรอบหน้า
                     S.farmToolIndex = (idx % #CFG.HEAL_TOOLS) + 1
                     return true, tn
                 end
@@ -1360,11 +1426,9 @@ local function runFarmRoutine(my, role)
 
     local waypoints = (role == "target") and CFG.FARM_TARGET_WAYPOINTS or CFG.FARM_HEALER_WAYPOINTS
 
-    -- 1) วาปเรียง waypoints
     teleportWaypoints(my, waypoints)
     if not isAlive(my) then S.farmRunning = false; return end
 
-    -- 2) ทำงานตามบทบาท
     if role == "target" then
         local lastPoint = waypoints[#waypoints]
         while isAlive(my) do
@@ -1388,7 +1452,6 @@ local function runFarmRoutine(my, role)
             task.wait(0.5)
         end
     elseif role == "healer" then
-        -- ============ คนเพิ่มเลือด: heal คนเจ็บใกล้สุด (Auto Heal style + tool วน) ============
         local lastPoint = waypoints[#waypoints]
         local lastCheck = os.clock()
         while isAlive(my) do
@@ -1398,7 +1461,6 @@ local function runFarmRoutine(my, role)
                 local root = char and char:FindFirstChild("HumanoidRootPart")
                 if not hum2 or not root then return end
 
-                -- ✅ หาเป้า: คนเจ็บที่ใกล้สุดในระยะ FARM_HEAL_RANGE (Auto Heal style)
                 local best, bestDist = nil, math.huge
                 for _, plr in ipairs(Players:GetPlayers()) do
                     if plr ~= player and plr.Character then
@@ -1414,17 +1476,15 @@ local function runFarmRoutine(my, role)
                 end
 
                 if best then
-                    -- ✅ มีคนเจ็บใกล้ → equip tool วน + รอติดมือ → ยิง remote
-                    local okEquip, toolName = equipHealToolCycle()
+                    local okEquip = equipHealToolCycle()
                     if okEquip then
-                        task.wait(0.08)  -- ให้เกม register
+                        task.wait(0.08)
                         if HealRemote then
                             pcall(function() HealRemote:FireServer(best) end)
                         end
                         task.wait(CFG.FARM_HEAL_DELAY)
                         task.wait(CFG.FARM_SWITCH_DELAY)
                     else
-                        -- fallback: ถ้า equip ไม่ได้ ยังลองยิง
                         if HealRemote then
                             pcall(function() HealRemote:FireServer(best) end)
                         end
@@ -1437,7 +1497,6 @@ local function runFarmRoutine(my, role)
                 end
                 task.wait(CFG.FARM_SCAN_INTERVAL)
             end)
-            -- ทุก 8 วิ: ตรวจว่ายังอยู่ใกล้จุดสุดท้ายไหม
             if isAlive(my) and os.clock() - lastCheck > 8 then
                 local r = getRoot()
                 if r and (r.Position - lastPoint).Magnitude > 30 then
@@ -2586,9 +2645,11 @@ local function onCharacterAdded(char)
             if not isAlive(my) then return end
             S.choice = picked
             if S.choice == "escape" then
-                local route = askEscapeRoute(my)
+                -- ✅ askEscapeRoute คืน 2 ค่า
+                local route, autoSwitch = askEscapeRoute(my)
                 if not isAlive(my) then return end
                 S.escapeRoute = route or "a"
+                S.escapeAutoSwitch = autoSwitch or false
             elseif S.choice == "farm" then
                 local role = askFarmRole(my)
                 if not isAlive(my) then return end
@@ -2611,7 +2672,7 @@ local function onCharacterAdded(char)
             runHelpRoutine(my)
         elseif S.choice == "farm" then
             S.farmRunning = false
-            S.farmToolIndex = 1  -- reset tool cycle หลังเกิดใหม่
+            S.farmToolIndex = 1
             task.wait(0.3)
             if isAlive(my) then
                 task.spawn(function() runFarmRoutine(my, S.farmRole) end)
