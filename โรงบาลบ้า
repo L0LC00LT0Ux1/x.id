@@ -1,5 +1,5 @@
 --// ============================================================
---//  🧹 MOP + ESCAPE + HELP + DETAIN + FARM MOR  (v27 Route C)
+--//  🧹 MOP + ESCAPE + HELP + DETAIN + FARM MOR  (v29 Route C+1)
 --// ============================================================
 
 local genv = (getgenv and getgenv()) or _G
@@ -35,13 +35,16 @@ local CFG = {
     STARE_RANGE = 30, STARE_ANGLE_DEG = 25, STARE_TRIGGER_TIME = 3,
     LOOK_AT_DURATION = 5,
     AGENT_RADIUS = 2, AGENT_HEIGHT = 5, LOOKAHEAD_DIST = 4, WAYPOINT_TIMEOUT = 4,
-    -- ✅ Escape speeds
     ESCAPE_SPEED = 30,
-    ESCAPE_ROUTE_C_FIRST_SPEED = 80,   -- ✅ ความเร็วพิเศษจุดแรกของเส้น C
     ESCAPE_HOLD_TIME = 60, ESCAPE_PULLBACK_THRESHOLD = 8, ESCAPE_PULLBACK_COOLDOWN = 0.15,
     ESCAPE_PLATFORM_SIZE = Vector3.new(30, 4, 30), ESCAPE_PLATFORM_GAP = 3,
     ESCAPE_AVOID_ENABLED = true,
     ESCAPE_AVOID_RANGE = 60,
+    ESCAPE_ROUTE_C_HIDEOUT = Vector3.new(291.28, 293.94, -586.04),
+    ESCAPE_ROUTE_C_HIDEOUT_SPEED = 80,
+    ESCAPE_ROUTE_C_END_WAIT = 30,
+    ESCAPE_ROUTE_C_HIDEOUT_WAIT = 30,
+    ESCAPE_ROUTE_C_HIDEOUT_PLATFORM = Vector3.new(20, 4, 20),
     ESCAPE_ROUTES = {
         a = {
             Vector3.new(243.18, 285.75, -578.83), Vector3.new(50.59, 287.22, -459.92),
@@ -61,19 +64,19 @@ local CFG = {
             Vector3.new(406.71, 527.77, 220.51), Vector3.new(193.50, 518.02, 490.86),
             Vector3.new(-3.87, 517.48, 457.34),
         },
-        -- ✅ เส้นทาง C (ใหม่)
+        -- ✅ Route C (11 waypoints)
         c = {
-            Vector3.new(291.28, 293.94, -586.04),  -- จุดเริ่ม (speed 80)
-            Vector3.new(245.94, 300.27, -583.86),  -- จุดที่ 2 (speed กลับเป็น 30)
-            Vector3.new(51.45, 287.22, -457.73),
-            Vector3.new(41.43, 303.93, -457.20),
-            Vector3.new(-17.95, 305.50, -396.18),
-            Vector3.new(-20.92, 305.80, -406.22),
-            Vector3.new(-20.92, 517.00, -406.22),
-            Vector3.new(-23.83, 571.25, -404.29),
-            Vector3.new(-219.59, 572.00, -396.38),
-            Vector3.new(-789.02, 525.00, -171.77),
-            Vector3.new(-0.88, 509.48, 459.38),    -- จุดสุดท้าย
+            Vector3.new(245.94, 300.27, -583.86),   -- 1
+            Vector3.new(51.45, 287.22, -457.73),    -- 2
+            Vector3.new(41.43, 303.93, -457.20),    -- 3
+            Vector3.new(-17.95, 305.50, -396.18),   -- 4
+            Vector3.new(-20.92, 305.80, -406.22),   -- 5
+            Vector3.new(-20.92, 517.00, -406.22),   -- 6
+            Vector3.new(-23.83, 571.25, -404.29),   -- 7
+            Vector3.new(-219.59, 572.00, -396.38),  -- 8
+            Vector3.new(-789.02, 525.00, -171.77),  -- 9
+            Vector3.new(-0.88, 517.48, 459.38),     -- 10 ⬅️ เพิ่มใหม่
+            Vector3.new(-0.88, 509.48, 459.38),     -- 11 (สุดท้าย)
         },
     },
     ADMIN_NAMES = {
@@ -102,7 +105,6 @@ local CFG = {
     SMART_TOOL_DEFAULT_SPEED = 0.4,
     DETAIN_RANGE = 1.5,
     DETAIN_CHECK_INTERVAL = 0.15,
-    -- ฟามหมอ
     FARM_TARGET_WAYPOINTS = {
         Vector3.new(256.72, 285.75, -555.26),
         Vector3.new(52.98, 287.22, -461.74),
@@ -182,7 +184,7 @@ local LOC = {
         routeTitle = "เลือกเส้นทางหนีออก",
         routeA = "⚡ เส้นทาง A (เร็ว)", routeADesc = "เส้นหลัก — มีคนจะสลับอัตโนมัติ",
         routeB = "🛡️ เส้นทาง B (สำรอง)", routeBDesc = "ใช้ตอนเส้น A มีคน",
-        routeC = "🔥 เส้นทาง C (ระเบิด)", routeCDesc = "จุดแรก speed 80 → หลังจากนั้น 30",
+        routeC = "🏠 เส้นทาง C (ซ่อน)", routeCDesc = "วน → รอ 30 วิ → ซ่อนที่ hideout → รอ 30 วิ → วนใหม่",
         escapeAutoSwitch = "🔄 สลับเส้นอัตโนมัติเมื่อเจอคน",
         escapeAutoSwitchDesc = "ติ้กถูก = สลับไปเส้นที่ปลอดคน | ไม่ติ้ก = ตามเส้นที่เลือก",
         stop = "⛔ หยุด", madeBy = "สร้างโดย TOUx1", elapsed = "ทำงานมาแล้ว",
@@ -234,16 +236,16 @@ local LOC = {
         modeMop = "🧹 Mop", modeMopDesc = "Auto clean spills",
         modeEscape = "🏃 Escape", modeEscapeDesc = "Auto route switching",
         modeHelp = "🩺 Help Play", modeHelpDesc = "Open help hub",
-        modeFarm = "🩺 Farm Medic", modeFarmDesc = "Requires 2 accounts — waypoints + heal",
+        modeFarm = "🩺 Farm Medic", modeFarmDesc = "Requires 2 accounts",
         farmRoleTitle = "Choose your role",
-        farmRoleTarget = "🎯 Heal Target", farmRoleTargetDesc = "Waypoints → wait to be healed",
-        farmRoleHealer = "🩹 Healer", farmRoleHealerDesc = "Waypoints → heal nearest injured",
+        farmRoleTarget = "🎯 Heal Target", farmRoleTargetDesc = "Waypoints → wait",
+        farmRoleHealer = "🩹 Healer", farmRoleHealerDesc = "Waypoints → heal nearest",
         routeTitle = "Select Escape Route",
-        routeA = "⚡ Route A (Fast)", routeADesc = "Primary — auto-switch if watched",
-        routeB = "🛡️ Route B (Backup)", routeBDesc = "Used when Route A is watched",
-        routeC = "🔥 Route C (Blitz)", routeCDesc = "First point speed 80 → then 30",
+        routeA = "⚡ Route A (Fast)", routeADesc = "Primary",
+        routeB = "🛡️ Route B (Backup)", routeBDesc = "Backup",
+        routeC = "🏠 Route C (Hideout)", routeCDesc = "Loop → wait 30s → hide → wait 30s → loop",
         escapeAutoSwitch = "🔄 Auto-switch route when watched",
-        escapeAutoSwitchDesc = "Check = pick safest route | Uncheck = follow selected",
+        escapeAutoSwitchDesc = "Check = pick safest | Uncheck = follow selected",
         stop = "⛔ STOP", madeBy = "Made by TOUx1", elapsed = "Elapsed",
         tab1 = "🩺 Play", tab2 = "⚙ Settings",
         helpTitle = "🧠 Help Hub",
@@ -304,9 +306,10 @@ local S = {
     lookingAt = nil, lookUntil = 0, mopTrack = nil,
     lang = nil,
     choice = nil, escapeRoute = nil, farmRole = nil,
-    escapeAutoSwitch = false,   -- ✅ ใหม่
+    escapeAutoSwitch = false,
     escapeStarted = false, escapeTween = nil, escapeMoving = false,
-    escapePlatform = nil, startTime = nil, infoGui = nil, infoTimerLabel = nil,
+    escapePlatform = nil, escapeHideoutPart = nil,
+    startTime = nil, infoGui = nil, infoTimerLabel = nil,
     helpGui = nil, helpMiniToggle = nil, helpFrame = nil,
     espOn = false, lockOn = false, lockNearestMode = false,
     lockTeamFilter = {}, lockNearestTarget = nil,
@@ -788,14 +791,12 @@ local function askFarmRole(my)
     return picked
 end
 
--- ✅ askEscapeRoute with checkbox + route C
 local function askEscapeRoute(my)
     local t = L()
     local gui = newGui("MopKitRoute", 998)
     local frame = mkPanel(gui, UDim2.fromOffset(320, 350))
     mkPanelTitle(frame, t.routeTitle)
 
-    -- ✅ Checkbox: auto-switch
     local autoSwitch = S.escapeAutoSwitch or false
     local chkBtn = Instance.new("TextButton", frame)
     chkBtn.Size = UDim2.new(1, -28, 0, 32)
@@ -821,7 +822,6 @@ local function askEscapeRoute(my)
         updChk()
     end)
 
-    -- description text
     local descLbl = Instance.new("TextLabel", frame)
     descLbl.Size = UDim2.new(1, -28, 0, 14)
     descLbl.Position = UDim2.new(0, 14, 0, 74)
@@ -1165,14 +1165,11 @@ local function nearestEscapePointIndex(pos, points)
     end
     return bestIdx
 end
-
--- ✅ Helper: find safest route at index i
 local function findSafestRouteAt(idx, excludeKey)
     local bestKey, bestDist = nil, math.huge
     for rk, rpoints in pairs(CFG.ESCAPE_ROUTES) do
         if rk ~= excludeKey and rpoints[idx] then
             local pos = rpoints[idx]
-            -- หาระยะห่างจากคนที่ใกล้สุด
             local minDist = math.huge
             for _, plr in ipairs(Players:GetPlayers()) do
                 if plr ~= player then
@@ -1183,23 +1180,95 @@ local function findSafestRouteAt(idx, excludeKey)
                     end
                 end
             end
-            if minDist >= CFG.ESCAPE_AVOID_RANGE then
-                return rk  -- ปลอดภัยพอ
-            end
-            if minDist > bestDist then
-                bestDist = minDist
-                bestKey = rk
-            end
+            if minDist >= CFG.ESCAPE_AVOID_RANGE then return rk end
+            if minDist > bestDist then bestDist = minDist; bestKey = rk end
         end
     end
-    -- ถ้าไม่มีเส้นที่ปลอด 100% ให้เลือกที่ห่างคนที่สุด
     if bestKey and bestDist > 0 then return bestKey end
     return nil
+end
+
+local function ensureHideoutPlatform(pos)
+    if S.escapeHideoutPart and S.escapeHideoutPart.Parent then return S.escapeHideoutPart end
+    local p = Instance.new("Part")
+    p.Name = "TOU_HideoutFloor"
+    p.Anchored = true
+    p.CanCollide = true
+    p.CanTouch = false
+    pcall(function() p.CanQuery = false end)
+    p.Transparency = 1
+    p.Material = Enum.Material.SmoothPlastic
+    p.Size = CFG.ESCAPE_ROUTE_C_HIDEOUT_PLATFORM
+    p.CFrame = CFrame.new(pos.X, pos.Y - (CFG.ESCAPE_ROUTE_C_HIDEOUT_PLATFORM.Y / 2) - 0.5, pos.Z)
+    p.Parent = Workspace
+    S.escapeHideoutPart = p
+    return p
+end
+local function destroyHideoutPlatform()
+    if S.escapeHideoutPart then
+        pcall(function() S.escapeHideoutPart:Destroy() end)
+        S.escapeHideoutPart = nil
+    end
+end
+
+local function tweenToPosition(target, speed, noclipOn, my)
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not char or not hum or not root then return false end
+
+    if noclipOn then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then pcall(function() part.CanCollide = false end) end
+        end
+        pcall(function() hum.WalkSpeed = 0 end)
+        pcall(function() hum.AutoRotate = false end)
+    end
+
+    local startDist = (root.Position - target).Magnitude
+    local dur = math.max(startDist / speed, 0.05)
+    local dir = target - root.Position
+    local flat = Vector3.new(dir.X, 0, dir.Z)
+    local lookAt = flat.Magnitude > 0.05 and (target + flat) or (target + dir)
+    local targetCF = CFrame.new(target, lookAt)
+
+    local tw = TweenService:Create(root, TweenInfo.new(dur, Enum.EasingStyle.Linear), { CFrame = targetCF })
+    S.escapeTween = tw
+    S.escapeMoving = true
+    tw:Play()
+
+    local finished = false
+    local con
+    con = tw.Completed:Connect(function() finished = true end)
+    local t0 = os.clock()
+    while isAlive(my) and not finished do
+        if os.clock() - t0 > 60 then break end
+        if player.Character ~= char then break end
+        task.wait(0.05)
+    end
+    if con then con:Disconnect() end
+    S.escapeTween = nil
+    S.escapeMoving = false
+
+    local rf = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if rf then
+        pcall(function() rf.CFrame = CFrame.new(target) end)
+    end
+
+    if noclipOn and player.Character == char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then pcall(function() part.CanCollide = true end) end
+        end
+        pcall(function() hum.WalkSpeed = CFG.WALK_SPEED end)
+        pcall(function() hum.AutoRotate = true end)
+    end
+    return true
 end
 
 local function runEscapeLoop()
     local function stillOn() return (not S.stopped) and S.choice == "escape" end
     local routeKey = S.escapeRoute or "a"
+    local my = S.token
 
     while stillOn() do
         local char = player.Character
@@ -1213,7 +1282,6 @@ local function runEscapeLoop()
         if hum.Health <= 0 then pcall(function() player.CharacterAdded:Wait() end); task.wait(1) continue end
         hum.AutoRotate = false; S.escapeMoving = false
 
-        -- ✅ เริ่มจาก route ที่เลือก
         local activeRouteKey = routeKey
         local supportCon = startEscapeSupport(stillOn)
         local died = false
@@ -1221,82 +1289,162 @@ local function runEscapeLoop()
             died = true; S.escapeMoving = false
             if S.escapeTween then pcall(function() S.escapeTween:Cancel() end) end
         end)
-        local completedAll = true; local i = 1
-        while stillOn() and not died do
-            local activeRoute = CFG.ESCAPE_ROUTES[activeRouteKey]
-            if not activeRoute or i > #activeRoute then break end
-            local pos = activeRoute[i]
 
-            -- ✅ Auto-switch logic
-            if S.escapeAutoSwitch and pos then
-                local safe = pointIsSafe(pos, CFG.ESCAPE_AVOID_RANGE)
-                if not safe then
-                    local newKey = findSafestRouteAt(i, activeRouteKey)
-                    if newKey then
-                        activeRouteKey = newKey
-                        local r2 = CFG.ESCAPE_ROUTES[activeRouteKey]
-                        pos = r2[i] or pos
+        -- SPECIAL FLOW: Route C
+        if activeRouteKey == "c" then
+            local hideout = CFG.ESCAPE_ROUTE_C_HIDEOUT
+            while stillOn() and not died do
+                local routeC = CFG.ESCAPE_ROUTES.c
+                local i = 1
+                local needSwitch = false
+                while stillOn() and not died and i <= #routeC do
+                    local pos = routeC[i]
+                    if S.escapeAutoSwitch then
+                        local safe = pointIsSafe(pos, CFG.ESCAPE_AVOID_RANGE)
+                        if not safe then
+                            local newKey = findSafestRouteAt(i, "c")
+                            if newKey then
+                                activeRouteKey = newKey
+                                needSwitch = true
+                                break
+                            end
+                        end
+                    end
+                    local c2 = player.Character
+                    local r2 = c2 and c2:FindFirstChild("HumanoidRootPart")
+                    if not r2 then break end
+                    local startDist = (r2.Position - pos).Magnitude
+                    local dur = math.max(startDist / CFG.ESCAPE_SPEED, 0.05)
+                    local dir = pos - r2.Position
+                    local flat = Vector3.new(dir.X, 0, dir.Z)
+                    local lookAt = flat.Magnitude > 0.05 and (pos + flat) or (pos + dir)
+                    local targetCF = CFrame.new(pos, lookAt)
+                    S.escapeMoving = true
+                    S.escapeTween = TweenService:Create(r2, TweenInfo.new(dur, Enum.EasingStyle.Linear), { CFrame = targetCF })
+                    S.escapeTween:Play()
+                    local finished, pulledBack = false, false
+                    local con
+                    con = S.escapeTween.Completed:Connect(function() finished = true end)
+                    local lastDist = startDist
+                    while stillOn() and not finished and not died do
+                        task.wait()
+                        local rr = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                        if not rr then break end
+                        local curDist = (rr.Position - pos).Magnitude
+                        if curDist - lastDist > CFG.ESCAPE_PULLBACK_THRESHOLD then pulledBack = true; break end
+                        lastDist = curDist
+                    end
+                    con:Disconnect(); S.escapeMoving = false
+                    if died or not stillOn() then break end
+                    if pulledBack then
+                        if S.escapeTween then pcall(function() S.escapeTween:Cancel() end) end
+                        S.escapeTween = nil
+                        task.wait(CFG.ESCAPE_PULLBACK_COOLDOWN)
+                        local rr = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                        if rr then i = nearestEscapePointIndex(rr.Position, routeC) end
+                    else
+                        S.escapeTween = nil; i = i + 1
                     end
                 end
-            end
+                if died or not stillOn() then break end
+                if needSwitch then break end
 
-            local c = player.Character
-            local r = c and c:FindFirstChild("HumanoidRootPart")
-            if not r then completedAll = false break end
-            local startDist = (r.Position - pos).Magnitude
+                local t0 = os.clock()
+                while stillOn() and not died and os.clock() - t0 < CFG.ESCAPE_ROUTE_C_END_WAIT do
+                    task.wait(0.5)
+                end
+                if died or not stillOn() then break end
 
-            -- ✅ Speed: route C จุดแรก = 80
-            local wpSpeed = CFG.ESCAPE_SPEED
-            if activeRouteKey == "c" and i == 1 then
-                wpSpeed = CFG.ESCAPE_ROUTE_C_FIRST_SPEED
-            end
+                tweenToPosition(hideout, CFG.ESCAPE_ROUTE_C_HIDEOUT_SPEED, true, my)
+                if died or not stillOn() then break end
 
-            local dur = math.max(startDist / wpSpeed, 0.05)
-            local dir = pos - r.Position
-            local flat = Vector3.new(dir.X, 0, dir.Z)
-            local lookAt = flat.Magnitude > 0.05 and (pos + flat) or (pos + dir)
-            local targetCF = CFrame.new(pos, lookAt)
-            S.escapeMoving = true
-            S.escapeTween = TweenService:Create(r, TweenInfo.new(dur, Enum.EasingStyle.Linear), { CFrame = targetCF })
-            S.escapeTween:Play()
-            local finished, pulledBack = false, false
-            local con
-            con = S.escapeTween.Completed:Connect(function() finished = true end)
-            local lastDist = startDist
-            while stillOn() and not finished and not died do
-                task.wait()
-                local rr = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                if not rr then break end
-                local curDist = (rr.Position - pos).Magnitude
-                if curDist - lastDist > CFG.ESCAPE_PULLBACK_THRESHOLD then pulledBack = true; break end
-                lastDist = curDist
-            end
-            con:Disconnect(); S.escapeMoving = false
-            if died or not stillOn() then completedAll = false; break end
-            if pulledBack then
-                if S.escapeTween then pcall(function() S.escapeTween:Cancel() end) end
-                S.escapeTween = nil
-                task.wait(CFG.ESCAPE_PULLBACK_COOLDOWN)
-                local rr = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                if rr then i = nearestEscapePointIndex(rr.Position, CFG.ESCAPE_ROUTES[activeRouteKey]) end
-            else
-                S.escapeTween = nil
-                i = i + 1
+                ensureHideoutPlatform(hideout)
+
+                local t1 = os.clock()
+                while stillOn() and not died and os.clock() - t1 < CFG.ESCAPE_ROUTE_C_HIDEOUT_WAIT do
+                    task.wait(0.5)
+                end
+                destroyHideoutPlatform()
+                if died or not stillOn() then break end
             end
         end
-        if supportCon then supportCon:Disconnect() end
-        deathConn:Disconnect()
-        if completedAll and stillOn() then
-            local t0 = os.clock()
-            while stillOn() and os.clock() - t0 < CFG.ESCAPE_HOLD_TIME do task.wait(0.5) end
-        elseif died then
+
+        -- NORMAL FLOW (A / B)
+        if stillOn() and not died and activeRouteKey ~= "c" then
+            local completedAll = true
+            local i = 1
+            while stillOn() and not died do
+                local activeRoute = CFG.ESCAPE_ROUTES[activeRouteKey]
+                if not activeRoute or i > #activeRoute then break end
+                local pos = activeRoute[i]
+
+                if S.escapeAutoSwitch and pos then
+                    local safe = pointIsSafe(pos, CFG.ESCAPE_AVOID_RANGE)
+                    if not safe then
+                        local newKey = findSafestRouteAt(i, activeRouteKey)
+                        if newKey then
+                            activeRouteKey = newKey
+                            local r2 = CFG.ESCAPE_ROUTES[activeRouteKey]
+                            pos = r2[i] or pos
+                        end
+                    end
+                end
+
+                local c = player.Character
+                local r = c and c:FindFirstChild("HumanoidRootPart")
+                if not r then completedAll = false; break end
+                local startDist = (r.Position - pos).Magnitude
+                local dur = math.max(startDist / CFG.ESCAPE_SPEED, 0.05)
+                local dir = pos - r.Position
+                local flat = Vector3.new(dir.X, 0, dir.Z)
+                local lookAt = flat.Magnitude > 0.05 and (pos + flat) or (pos + dir)
+                local targetCF = CFrame.new(pos, lookAt)
+                S.escapeMoving = true
+                S.escapeTween = TweenService:Create(r, TweenInfo.new(dur, Enum.EasingStyle.Linear), { CFrame = targetCF })
+                S.escapeTween:Play()
+                local finished, pulledBack = false, false
+                local con
+                con = S.escapeTween.Completed:Connect(function() finished = true end)
+                local lastDist = startDist
+                while stillOn() and not finished and not died do
+                    task.wait()
+                    local rr = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                    if not rr then break end
+                    local curDist = (rr.Position - pos).Magnitude
+                    if curDist - lastDist > CFG.ESCAPE_PULLBACK_THRESHOLD then pulledBack = true; break end
+                    lastDist = curDist
+                end
+                con:Disconnect(); S.escapeMoving = false
+                if died or not stillOn() then completedAll = false; break end
+                if pulledBack then
+                    if S.escapeTween then pcall(function() S.escapeTween:Cancel() end) end
+                    S.escapeTween = nil
+                    task.wait(CFG.ESCAPE_PULLBACK_COOLDOWN)
+                    local rr = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                    if rr then i = nearestEscapePointIndex(rr.Position, CFG.ESCAPE_ROUTES[activeRouteKey]) end
+                else
+                    S.escapeTween = nil
+                    i = i + 1
+                end
+            end
+            if completedAll and stillOn() and not died then
+                local t0 = os.clock()
+                while stillOn() and not died and os.clock() - t0 < CFG.ESCAPE_HOLD_TIME do task.wait(0.5) end
+            end
+        end
+
+        if died then
             while stillOn() do
                 local c = player.Character
                 local h = c and c:FindFirstChild("Humanoid")
-                if h and h.Health > 0 then task.wait(0.5) break end
+                if h and h.Health > 0 then task.wait(0.5); break end
                 task.wait(0.5)
             end
         end
+
+        if supportCon then supportCon:Disconnect() end
+        deathConn:Disconnect()
+        destroyHideoutPlatform()
     end
     local hum = getHum(); if hum then hum.AutoRotate = true end
     local char = player.Character
@@ -1306,9 +1454,10 @@ local function runEscapeLoop()
         end
     end
     destroyEscapePlatform()
+    destroyHideoutPlatform()
 end
 
--- ✅ ฟามหมอ helpers (เหมือน v26)
+-- FARM helpers
 local function setCharCollide(char, state)
     if not char then return end
     for _, part in ipairs(char:GetDescendants()) do
@@ -1393,9 +1542,7 @@ local function equipHealToolCycle()
         if char:FindFirstChild(tn) then heldName = tn; break end
     end
 
-    if not heldName then
-        S.farmToolIndex = 1
-    end
+    if not heldName then S.farmToolIndex = 1 end
 
     for attempt = 0, #CFG.HEAL_TOOLS - 1 do
         local idx = ((S.farmToolIndex - 1 + attempt) % #CFG.HEAL_TOOLS) + 1
@@ -1425,7 +1572,6 @@ local function runFarmRoutine(my, role)
     S.farmRunning = true
 
     local waypoints = (role == "target") and CFG.FARM_TARGET_WAYPOINTS or CFG.FARM_HEALER_WAYPOINTS
-
     teleportWaypoints(my, waypoints)
     if not isAlive(my) then S.farmRunning = false; return end
 
@@ -1479,15 +1625,11 @@ local function runFarmRoutine(my, role)
                     local okEquip = equipHealToolCycle()
                     if okEquip then
                         task.wait(0.08)
-                        if HealRemote then
-                            pcall(function() HealRemote:FireServer(best) end)
-                        end
+                        if HealRemote then pcall(function() HealRemote:FireServer(best) end) end
                         task.wait(CFG.FARM_HEAL_DELAY)
                         task.wait(CFG.FARM_SWITCH_DELAY)
                     else
-                        if HealRemote then
-                            pcall(function() HealRemote:FireServer(best) end)
-                        end
+                        if HealRemote then pcall(function() HealRemote:FireServer(best) end) end
                         task.wait(CFG.FARM_HEAL_DELAY)
                     end
                     S.farmLastTarget = best
@@ -2645,7 +2787,6 @@ local function onCharacterAdded(char)
             if not isAlive(my) then return end
             S.choice = picked
             if S.choice == "escape" then
-                -- ✅ askEscapeRoute คืน 2 ค่า
                 local route, autoSwitch = askEscapeRoute(my)
                 if not isAlive(my) then return end
                 S.escapeRoute = route or "a"
@@ -2694,6 +2835,7 @@ local function stopAll()
     pcall(function() if S.escapeTween then S.escapeTween:Cancel() end end)
     pcall(function() if S.farmTween then S.farmTween:Cancel() end end)
     pcall(function() if S.escapePlatform then S.escapePlatform:Destroy() end end)
+    pcall(function() if S.escapeHideoutPart then S.escapeHideoutPart:Destroy() end end)
     pcall(function() if S.circlePart then S.circlePart:Destroy() end end)
     for plr in pairs(espState) do pcall(destroyESP, plr) end
     pcall(purgeWeaponESP)
