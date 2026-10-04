@@ -1,5 +1,5 @@
 --// ============================================================
---//  🧹 MOP + ESCAPE + HELP + DETAIN + FARM MOR  (v29 Route C+1)
+--//  🧹 MOP + ESCAPE + HELP + DETAIN + FARM MOR  (v30 Route C tuned)
 --// ============================================================
 
 local genv = (getgenv and getgenv()) or _G
@@ -40,10 +40,13 @@ local CFG = {
     ESCAPE_PLATFORM_SIZE = Vector3.new(30, 4, 30), ESCAPE_PLATFORM_GAP = 3,
     ESCAPE_AVOID_ENABLED = true,
     ESCAPE_AVOID_RANGE = 60,
+    -- ✅ Route C
     ESCAPE_ROUTE_C_HIDEOUT = Vector3.new(291.28, 293.94, -586.04),
     ESCAPE_ROUTE_C_HIDEOUT_SPEED = 80,
-    ESCAPE_ROUTE_C_END_WAIT = 30,
-    ESCAPE_ROUTE_C_HIDEOUT_WAIT = 30,
+    ESCAPE_ROUTE_C_END_WAIT = 20,      -- ✅ 30 → 20
+    ESCAPE_ROUTE_C_HIDEOUT_WAIT = 40,  -- ✅ 30 → 40
+    ESCAPE_ROUTE_C_FAST_START_IDX = 9, -- ✅ เริ่มเร็ว 40 ที่ waypoint 9
+    ESCAPE_ROUTE_C_FAST_SPEED = 40,    -- ✅ ความเร็วท่อนท้าย
     ESCAPE_ROUTE_C_HIDEOUT_PLATFORM = Vector3.new(20, 4, 20),
     ESCAPE_ROUTES = {
         a = {
@@ -64,19 +67,18 @@ local CFG = {
             Vector3.new(406.71, 527.77, 220.51), Vector3.new(193.50, 518.02, 490.86),
             Vector3.new(-3.87, 517.48, 457.34),
         },
-        -- ✅ Route C (11 waypoints)
         c = {
-            Vector3.new(245.94, 300.27, -583.86),   -- 1
-            Vector3.new(51.45, 287.22, -457.73),    -- 2
-            Vector3.new(41.43, 303.93, -457.20),    -- 3
-            Vector3.new(-17.95, 305.50, -396.18),   -- 4
-            Vector3.new(-20.92, 305.80, -406.22),   -- 5
-            Vector3.new(-20.92, 517.00, -406.22),   -- 6
-            Vector3.new(-23.83, 571.25, -404.29),   -- 7
-            Vector3.new(-219.59, 572.00, -396.38),  -- 8
-            Vector3.new(-789.02, 525.00, -171.77),  -- 9
-            Vector3.new(-0.88, 517.48, 459.38),     -- 10 ⬅️ เพิ่มใหม่
-            Vector3.new(-0.88, 509.48, 459.38),     -- 11 (สุดท้าย)
+            Vector3.new(245.94, 300.27, -583.86),   -- 1 (30)
+            Vector3.new(51.45, 287.22, -457.73),    -- 2 (30)
+            Vector3.new(41.43, 303.93, -457.20),    -- 3 (30)
+            Vector3.new(-17.95, 305.50, -396.18),   -- 4 (30)
+            Vector3.new(-20.92, 305.80, -406.22),   -- 5 (30)
+            Vector3.new(-20.92, 517.00, -406.22),   -- 6 (30)
+            Vector3.new(-23.83, 571.25, -404.29),   -- 7 (30)
+            Vector3.new(-219.59, 572.00, -396.38),  -- 8 (30)
+            Vector3.new(-789.02, 525.00, -171.77),  -- 9 (⭐ 40)
+            Vector3.new(-0.88, 517.48, 459.38),     -- 10 (⭐ 40)
+            Vector3.new(-0.88, 509.48, 459.38),     -- 11 (⭐ 40)
         },
     },
     ADMIN_NAMES = {
@@ -184,7 +186,7 @@ local LOC = {
         routeTitle = "เลือกเส้นทางหนีออก",
         routeA = "⚡ เส้นทาง A (เร็ว)", routeADesc = "เส้นหลัก — มีคนจะสลับอัตโนมัติ",
         routeB = "🛡️ เส้นทาง B (สำรอง)", routeBDesc = "ใช้ตอนเส้น A มีคน",
-        routeC = "🏠 เส้นทาง C (ซ่อน)", routeCDesc = "วน → รอ 30 วิ → ซ่อนที่ hideout → รอ 30 วิ → วนใหม่",
+        routeC = "🏠 เส้นทาง C (ซ่อน)", routeCDesc = "วน 30 → รอ 20 วิ → ซ่อน → รอ 40 วิ → วนใหม่",
         escapeAutoSwitch = "🔄 สลับเส้นอัตโนมัติเมื่อเจอคน",
         escapeAutoSwitchDesc = "ติ้กถูก = สลับไปเส้นที่ปลอดคน | ไม่ติ้ก = ตามเส้นที่เลือก",
         stop = "⛔ หยุด", madeBy = "สร้างโดย TOUx1", elapsed = "ทำงานมาแล้ว",
@@ -217,7 +219,7 @@ local LOC = {
         wlHint = "ติ๊กถูก = ไม่ล็อค/ไม่ตี • กด 'รีเฟรช' เมื่อมีคนใหม่",
         miniESP = "ผู้เล่น", miniLock = "ล็อคเป้า", miniLockNear = "ใกล้สุด",
         miniHeal = "เลือด", miniTool = "ไอเทม", miniCircle = "วงกลม",
-        miniWeapons = "อาวุธ", miniSpeed = "ความเร็ว", miniDetain = "ออร่าจับ",
+        miniWeapons = "อาวุธ", miniSpeed = "ความเร็ว", miniDetain = "อร่าจับ",
         setTitle = "⚙ ตั้งค่า",
         groupSize = "▌ ขนาด GUI", lblSize = "📐 ปรับขนาดหน้าต่าง",
         szSmall = "เล็ก", szMedium = "กลาง", szLarge = "ใหญ่",
@@ -243,7 +245,7 @@ local LOC = {
         routeTitle = "Select Escape Route",
         routeA = "⚡ Route A (Fast)", routeADesc = "Primary",
         routeB = "🛡️ Route B (Backup)", routeBDesc = "Backup",
-        routeC = "🏠 Route C (Hideout)", routeCDesc = "Loop → wait 30s → hide → wait 30s → loop",
+        routeC = "🏠 Route C (Hideout)", routeCDesc = "Loop 30 → wait 20s → hide → wait 40s → loop",
         escapeAutoSwitch = "🔄 Auto-switch route when watched",
         escapeAutoSwitchDesc = "Check = pick safest | Uncheck = follow selected",
         stop = "⛔ STOP", madeBy = "Made by TOUx1", elapsed = "Elapsed",
@@ -1314,7 +1316,12 @@ local function runEscapeLoop()
                     local r2 = c2 and c2:FindFirstChild("HumanoidRootPart")
                     if not r2 then break end
                     local startDist = (r2.Position - pos).Magnitude
-                    local dur = math.max(startDist / CFG.ESCAPE_SPEED, 0.05)
+                    -- ✅ Speed: ถ้าอยู่ waypoint ที่ >= FAST_START_IDX → ใช้ 40
+                    local wpSpeed = CFG.ESCAPE_SPEED
+                    if i >= CFG.ESCAPE_ROUTE_C_FAST_START_IDX then
+                        wpSpeed = CFG.ESCAPE_ROUTE_C_FAST_SPEED
+                    end
+                    local dur = math.max(startDist / wpSpeed, 0.05)
                     local dir = pos - r2.Position
                     local flat = Vector3.new(dir.X, 0, dir.Z)
                     local lookAt = flat.Magnitude > 0.05 and (pos + flat) or (pos + dir)
@@ -1349,6 +1356,7 @@ local function runEscapeLoop()
                 if died or not stillOn() then break end
                 if needSwitch then break end
 
+                -- ✅ รอ 20 วิ (เดิม 30)
                 local t0 = os.clock()
                 while stillOn() and not died and os.clock() - t0 < CFG.ESCAPE_ROUTE_C_END_WAIT do
                     task.wait(0.5)
@@ -1360,6 +1368,7 @@ local function runEscapeLoop()
 
                 ensureHideoutPlatform(hideout)
 
+                -- ✅ รอ 40 วิ (เดิม 30)
                 local t1 = os.clock()
                 while stillOn() and not died and os.clock() - t1 < CFG.ESCAPE_ROUTE_C_HIDEOUT_WAIT do
                     task.wait(0.5)
