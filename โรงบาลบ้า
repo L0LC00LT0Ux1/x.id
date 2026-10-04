@@ -1,5 +1,5 @@
 --// ============================================================
---//  🧹 MOP + ESCAPE + HELP + DETAIN + FARM MOR  (v25 Waypoints)
+--//  🧹 MOP + ESCAPE + HELP + DETAIN + FARM MOR  (v26 Auto Heal Style)
 --// ============================================================
 
 local genv = (getgenv and getgenv()) or _G
@@ -73,7 +73,8 @@ local CFG = {
     AUTO_TOOL_RANGE = 5,
     AUTO_TOOL_RANGE_MIN = 1, AUTO_TOOL_RANGE_MAX = 50,
     AUTO_HEAL_THRESHOLD = 0.5,
-    HEAL_TOOLS = { "Large Medical Kit", "Medical Kit", "Quick-Fix" },
+    -- ✅ เรียงตามลำดับการวน (Quick-Fix → Medical Kit → Large Medical Kit)
+    HEAL_TOOLS = { "Quick-Fix", "Medical Kit", "Large Medical Kit" },
     HEAL_DELAY = 0.15, HEAL_RESTORE_DELAY = 0.25,
     WEAPON_PATHS = {
         { "Ignored", "CrutchSpawns" },
@@ -86,7 +87,7 @@ local CFG = {
     SMART_TOOL_DEFAULT_SPEED = 0.4,
     DETAIN_RANGE = 1.5,
     DETAIN_CHECK_INTERVAL = 0.15,
-    -- ✅ ฟามหมอ
+    -- ฟามหมอ
     FARM_TARGET_WAYPOINTS = {
         Vector3.new(256.72, 285.75, -555.26),
         Vector3.new(52.98, 287.22, -461.74),
@@ -95,7 +96,7 @@ local CFG = {
         Vector3.new(-4.10, 287.60, -396.32),
         Vector3.new(-8.35, 287.60, -357.78),
         Vector3.new(-50.78, 267.56, -331.65),
-        Vector3.new(-88.21, 248.50, -331.02),  -- จุดสุดท้าย (เป๊ะ 100%)
+        Vector3.new(-88.21, 248.50, -331.02),
     },
     FARM_HEALER_WAYPOINTS = {
         Vector3.new(12.94, 287.50, -423.48),
@@ -103,16 +104,17 @@ local CFG = {
         Vector3.new(-11.43, 287.60, -359.91),
         Vector3.new(-41.88, 287.56, -354.55),
         Vector3.new(-52.14, 267.56, -327.85),
-        Vector3.new(-89.48, 248.50, -330.93),  -- จุดสุดท้าย (เป๊ะ 100%)
+        Vector3.new(-89.48, 248.50, -330.93),
     },
-    FARM_NEAR_DIST = 6,          -- ระยะนับว่าถึงจุด (ตอนนี้ใช้แค่เช็ค)
-    FARM_TP_SPEED = 40,          -- ความเร็ววาป (studs/วิ)
+    FARM_NEAR_DIST = 6,
+    FARM_TP_SPEED = 40,
     FARM_TP_MIN_DUR = 0.3,
-    FARM_HEAL_THRESHOLD = 0.60,
-    FARM_HEAL_DELAY = 0.25,
-    FARM_SCAN_INTERVAL = 0.35,
+    FARM_HEAL_RANGE = 15,        -- ✅ ระยะ heal (Auto Heal style)
+    FARM_HEAL_DELAY = 0.15,
+    FARM_SCAN_INTERVAL = 0.15,
     FARM_KEEP_NEAR = 8,
     FARM_EQUIP_TIMEOUT = 2.0,
+    FARM_SWITCH_DELAY = 0.15,    -- ✅ หน่วงเวลาสลับ tool
 }
 
 local GUI_SIZES = {
@@ -161,7 +163,7 @@ local LOC = {
         modeFarm = "🩺 ฟามหมอ", modeFarmDesc = "ต้องใช้ 2 รหัส — วาปเรียง waypoints + เพิ่มเลือด",
         farmRoleTitle = "เลือกฝั่งที่จะเป็น",
         farmRoleTarget = "🎯 คนที่จะโดนเพิ่มเลือด", farmRoleTargetDesc = "วาปเรียง waypoints → ยืนรอรับเลือด",
-        farmRoleHealer = "🩹 คนเพิ่มเลือดให้ผู้เล่น", farmRoleHealerDesc = "วาปเรียง waypoints → เพิ่มเลือดคนใกล้สุด (HP ≤ 60%)",
+        farmRoleHealer = "🩹 คนเพิ่มเลือดให้ผู้เล่น", farmRoleHealerDesc = "วาปเรียง waypoints → เพิ่มเลือดคนเจ็บใกล้สุด",
         routeTitle = "เลือกเส้นทางหนีออก",
         routeA = "⚡ เส้นทาง A (เร็ว)", routeADesc = "เส้นหลัก — ถ้ามีคนจะสลับ B อัตโนมัติ",
         routeB = "🛡️ เส้นทาง B (สำรอง)", routeBDesc = "ใช้ตอนเส้น A มีคน",
@@ -217,7 +219,7 @@ local LOC = {
         modeFarm = "🩺 Farm Medic", modeFarmDesc = "Requires 2 accounts — waypoints + heal",
         farmRoleTitle = "Choose your role",
         farmRoleTarget = "🎯 Heal Target", farmRoleTargetDesc = "Waypoints → wait to be healed",
-        farmRoleHealer = "🩹 Healer", farmRoleHealerDesc = "Waypoints → heal nearest (HP ≤ 60%)",
+        farmRoleHealer = "🩹 Healer", farmRoleHealerDesc = "Waypoints → heal nearest injured",
         routeTitle = "Select Escape Route",
         routeA = "⚡ Route A (Fast)", routeADesc = "Primary — auto-switch to B if spotted",
         routeB = "🛡️ Route B (Backup)", routeBDesc = "Used when Route A is watched",
@@ -306,6 +308,9 @@ local S = {
     _lastLockOn = false, _lastLockNear = false,
     farmTween = nil,
     farmRunning = false,
+    -- ✅ tool switch state
+    farmToolIndex = 1,
+    farmLastTarget = nil,
 }
 local conns = {}
 local createdGuis = {}
@@ -1200,7 +1205,7 @@ local function runEscapeLoop()
     destroyEscapePlatform()
 end
 
--- ✅ ฟามหมอ (v25)
+-- ✅ ฟามหมอ helpers
 local function setCharCollide(char, state)
     if not char then return end
     for _, part in ipairs(char:GetDescendants()) do
@@ -1210,7 +1215,6 @@ local function setCharCollide(char, state)
     end
 end
 
--- ✅ วาปเรียง waypoints + จุดสุดท้ายเป๊ะ 100%
 local function teleportWaypoints(my, waypoints)
     if not waypoints or #waypoints == 0 then return false end
     local char = player.Character
@@ -1256,21 +1260,14 @@ local function teleportWaypoints(my, waypoints)
 
         if not ok or not isAlive(my) then break end
 
-        -- ✅ จุดสุดท้าย → เซ็ต CFrame เป๊ะ 100%
+        -- จุดสุดท้าย → เซ็ตเป๊ะ
         if idx == #waypoints then
             local cf = player.Character
             local rf = cf and cf:FindFirstChild("HumanoidRootPart")
             if rf then
-                pcall(function()
-                    rf.CFrame = CFrame.new(target, target + flat)
-                end)
+                pcall(function() rf.CFrame = CFrame.new(target) end)
                 task.wait(0.05)
-                -- ย้ำอีกครั้ง กัน rubber-band
-                if rf.Parent then
-                    pcall(function()
-                        rf.CFrame = CFrame.new(target)
-                    end)
-                end
+                if rf.Parent then pcall(function() rf.CFrame = CFrame.new(target) end) end
             end
         end
     end
@@ -1283,19 +1280,21 @@ local function teleportWaypoints(my, waypoints)
     return ok
 end
 
--- ✅ หา tool เพิ่มเลือด + รอจนติดมือจริง
+-- ✅ equip tool แบบวน + รอติดมือ
 local function equipHealToolAndWait(timeout)
     local char = player.Character
     local bp = player:FindFirstChild("Backpack")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not char or not hum then return false end
-    -- เช็คว่าถืออยู่แล้ว
+    if not char or not hum then return false, nil end
+
+    -- ถืออยู่แล้ว?
     for _, tn in ipairs(CFG.HEAL_TOOLS) do
         if char:FindFirstChild(tn) then return true, tn end
     end
+
     -- ล้างของเดิมในมือ
     pcall(function() hum:UnequipTools() end)
-    task.wait(0.06)
+    task.wait(0.05)
 
     for _, tn in ipairs(CFG.HEAL_TOOLS) do
         local t = bp and bp:FindFirstChild(tn)
@@ -1304,7 +1303,47 @@ local function equipHealToolAndWait(timeout)
             local t0 = os.clock()
             local to = timeout or CFG.FARM_EQUIP_TIMEOUT
             while os.clock() - t0 < to do
+                if char:FindFirstChild(tn) then return true, tn end
+                task.wait(0.05)
+            end
+        end
+    end
+    return false, nil
+end
+
+-- ✅ equip tool วน — Quick-Fix → Medical Kit → Large Medical Kit
+local function equipHealToolCycle()
+    local char = player.Character
+    local bp = player:FindFirstChild("Backpack")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not char or not hum then return false, nil end
+
+    -- ตรวจว่าไอเทมในมือเป็นตัวไหน
+    local heldName
+    for _, tn in ipairs(CFG.HEAL_TOOLS) do
+        if char:FindFirstChild(tn) then heldName = tn; break end
+    end
+
+    -- ถ้าไม่ได้ถือ heal tool อยู่ → เริ่มจาก index 1
+    if not heldName then
+        S.farmToolIndex = 1
+    end
+
+    -- ลองทุก tool ตามลำดับ (เริ่มจาก index ปัจจุบัน)
+    for attempt = 0, #CFG.HEAL_TOOLS - 1 do
+        local idx = ((S.farmToolIndex - 1 + attempt) % #CFG.HEAL_TOOLS) + 1
+        local tn = CFG.HEAL_TOOLS[idx]
+        local t = bp and bp:FindFirstChild(tn)
+        if not t then t = char:FindFirstChild(tn) end
+        if t and t:IsA("Tool") then
+            pcall(function() hum:UnequipTools() end)
+            task.wait(0.05)
+            pcall(function() hum:EquipTool(t) end)
+            local t0 = os.clock()
+            while os.clock() - t0 < CFG.FARM_EQUIP_TIMEOUT do
                 if char:FindFirstChild(tn) then
+                    -- ✅ สำเร็จ → เลื่อน index ไปตัวถัดไปสำหรับรอบหน้า
+                    S.farmToolIndex = (idx % #CFG.HEAL_TOOLS) + 1
                     return true, tn
                 end
                 task.wait(0.05)
@@ -1316,7 +1355,7 @@ end
 
 local function runFarmRoutine(my, role)
     if not isAlive(my) then return end
-    if S.farmRunning then return end  -- กันรันซ้อน
+    if S.farmRunning then return end
     S.farmRunning = true
 
     local waypoints = (role == "target") and CFG.FARM_TARGET_WAYPOINTS or CFG.FARM_HEALER_WAYPOINTS
@@ -1335,7 +1374,6 @@ local function runFarmRoutine(my, role)
                 if r and h then
                     local d = (r.Position - lastPoint).Magnitude
                     if d > CFG.FARM_KEEP_NEAR then
-                        -- ✅ ตาย/เกิดใหม่ → วาปใหม่ทั้งเส้น
                         task.spawn(function()
                             if not S.farmRunning then return end
                             S.farmRunning = false
@@ -1343,13 +1381,14 @@ local function runFarmRoutine(my, role)
                             runFarmRoutine(my, role)
                         end)
                     else
-                        h:MoveTo(r.Position)  -- ยืนนิ่ง
+                        h:MoveTo(r.Position)
                     end
                 end
             end)
             task.wait(0.5)
         end
     elseif role == "healer" then
+        -- ============ คนเพิ่มเลือด: heal คนเจ็บใกล้สุด (Auto Heal style + tool วน) ============
         local lastPoint = waypoints[#waypoints]
         local lastCheck = os.clock()
         while isAlive(my) do
@@ -1359,42 +1398,42 @@ local function runFarmRoutine(my, role)
                 local root = char and char:FindFirstChild("HumanoidRootPart")
                 if not hum2 or not root then return end
 
-                -- หาเป้าใกล้สุด
+                -- ✅ หาเป้า: คนเจ็บที่ใกล้สุดในระยะ FARM_HEAL_RANGE (Auto Heal style)
                 local best, bestDist = nil, math.huge
                 for _, plr in ipairs(Players:GetPlayers()) do
                     if plr ~= player and plr.Character then
                         local h = plr.Character:FindFirstChildOfClass("Humanoid")
                         local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
-                        if h and hrp and h.Health > 0 and h.MaxHealth > 0 then
+                        if h and hrp and h.Health > 0 and h.Health < h.MaxHealth then
                             local d = (root.Position - hrp.Position).Magnitude
-                            if d < bestDist then best, bestDist = plr, d end
+                            if d <= CFG.FARM_HEAL_RANGE and d < bestDist then
+                                best, bestDist = plr, d
+                            end
                         end
                     end
                 end
 
                 if best then
-                    local bh = best.Character:FindFirstChildOfClass("Humanoid")
-                    if bh and bh.MaxHealth > 0 then
-                        local ratio = bh.Health / bh.MaxHealth
-                        if ratio <= CFG.FARM_HEAL_THRESHOLD then
-                            -- ✅ equip tool + รอจนติดมือ
-                            local okEquip = equipHealToolAndWait(CFG.FARM_EQUIP_TIMEOUT)
-                            if okEquip then
-                                task.wait(0.15)
-                                if HealRemote then
-                                    pcall(function() HealRemote:FireServer(best) end)
-                                end
-                                task.wait(CFG.FARM_HEAL_DELAY)
-                            else
-                                -- ถ้า equip ไม่ได้ ยังลองยิงดู
-                                if HealRemote then
-                                    pcall(function() HealRemote:FireServer(best) end)
-                                end
-                                task.wait(CFG.FARM_HEAL_DELAY)
-                            end
-                            return
+                    -- ✅ มีคนเจ็บใกล้ → equip tool วน + รอติดมือ → ยิง remote
+                    local okEquip, toolName = equipHealToolCycle()
+                    if okEquip then
+                        task.wait(0.08)  -- ให้เกม register
+                        if HealRemote then
+                            pcall(function() HealRemote:FireServer(best) end)
                         end
+                        task.wait(CFG.FARM_HEAL_DELAY)
+                        task.wait(CFG.FARM_SWITCH_DELAY)
+                    else
+                        -- fallback: ถ้า equip ไม่ได้ ยังลองยิง
+                        if HealRemote then
+                            pcall(function() HealRemote:FireServer(best) end)
+                        end
+                        task.wait(CFG.FARM_HEAL_DELAY)
                     end
+                    S.farmLastTarget = best
+                    return
+                else
+                    S.farmLastTarget = nil
                 end
                 task.wait(CFG.FARM_SCAN_INTERVAL)
             end)
@@ -2571,8 +2610,8 @@ local function onCharacterAdded(char)
         elseif S.choice == "help" then
             runHelpRoutine(my)
         elseif S.choice == "farm" then
-            -- ✅ ตาย/เกิดใหม่ → รันฟามใหม่ทันที
             S.farmRunning = false
+            S.farmToolIndex = 1  -- reset tool cycle หลังเกิดใหม่
             task.wait(0.3)
             if isAlive(my) then
                 task.spawn(function() runFarmRoutine(my, S.farmRole) end)
