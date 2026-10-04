@@ -1,5 +1,5 @@
 --// ============================================================
---//  🧹 MOP + ESCAPE + HELP + DETAIN + FARM MOR  (v31 Route C tuned)
+--//  🧹 MOP + ESCAPE + HELP + DETAIN + FARM MOR  (v32 Farm Fix)
 --// ============================================================
 
 local genv = (getgenv and getgenv()) or _G
@@ -43,8 +43,8 @@ local CFG = {
     -- ✅ Route C (v31 tuned)
     ESCAPE_ROUTE_C_HIDEOUT = Vector3.new(291.28, 293.94, -586.04),
     ESCAPE_ROUTE_C_HIDEOUT_SPEED = 80,   -- ✅ waypoint 1 = 80
-    ESCAPE_ROUTE_C_END_WAIT = 0,         -- ✅ ไม่รอ 20 วิ → วาป hideout ทันที
-    ESCAPE_ROUTE_C_HIDEOUT_WAIT = 60,    -- ✅ 40 → 60 วิ
+    ESCAPE_ROUTE_C_END_WAIT = 0,         -- ✅ ไม่รอ → วาป hideout ทันที
+    ESCAPE_ROUTE_C_HIDEOUT_WAIT = 60,    -- ✅ รอ 60 วิ
     ESCAPE_ROUTE_C_FAST_START_IDX = 10,  -- ✅ เริ่มเร็ว 40 ที่ waypoint 10
     ESCAPE_ROUTE_C_FAST_SPEED = 40,      -- ✅ ความเร็วท่อนท้าย
     ESCAPE_ROUTE_C_HIDEOUT_PLATFORM = Vector3.new(20, 4, 20),
@@ -73,11 +73,11 @@ local CFG = {
             Vector3.new(51.45, 287.22, -457.73),    -- 3  (30)
             Vector3.new(41.43, 303.93, -457.20),    -- 4  (30)
             Vector3.new(-17.95, 305.50, -396.18),   -- 5  (30)
-            Vector3.new(-25.16, 305.80, -406.23),   -- 6  (30) ⭐ เปลี่ยนพิกัด
+            Vector3.new(-25.16, 305.80, -406.23),   -- 6  (30)
             Vector3.new(-20.92, 517.00, -406.22),   -- 7  (30)
             Vector3.new(-23.83, 571.25, -404.29),   -- 8  (30)
             Vector3.new(-219.59, 572.00, -396.38),  -- 9  (30)
-            Vector3.new(-789.02, 525.00, -171.77),  -- 10 (40) ⭐ เริ่มเร็ว 40
+            Vector3.new(-789.02, 525.00, -171.77),  -- 10 (40) ⭐
             Vector3.new(-0.88, 517.48, 459.38),     -- 11 (40)
             Vector3.new(-0.88, 509.48, 459.38),     -- 12 (40) จุดสุดท้าย
         },
@@ -127,7 +127,8 @@ local CFG = {
         Vector3.new(-89.48, 248.50, -330.93),
     },
     FARM_NEAR_DIST = 6,
-    FARM_TP_SPEED = 40,
+    FARM_TP_SPEED = 40,             -- healer
+    FARM_TP_SPEED_TARGET = 85,      -- ✅ target เร็ว 85
     FARM_TP_MIN_DUR = 0.3,
     FARM_HEAL_RANGE = 15,
     FARM_HEAL_DELAY = 0.15,
@@ -1481,8 +1482,10 @@ local function setCharCollide(char, state)
     end
 end
 
-local function teleportWaypoints(my, waypoints)
+-- ✅ รับ speed เป็น parameter
+local function teleportWaypoints(my, waypoints, speed)
     if not waypoints or #waypoints == 0 then return false end
+    speed = speed or CFG.FARM_TP_SPEED
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -1501,7 +1504,7 @@ local function teleportWaypoints(my, waypoints)
         if not c2 or not r2 then ok = false; break end
 
         local startDist = (r2.Position - target).Magnitude
-        local dur = math.max(startDist / CFG.FARM_TP_SPEED, CFG.FARM_TP_MIN_DUR)
+        local dur = math.max(startDist / speed, CFG.FARM_TP_MIN_DUR)  -- ✅ ใช้ speed ที่รับมา
 
         local dir = target - r2.Position
         local flat = Vector3.new(dir.X, 0, dir.Z)
@@ -1585,8 +1588,11 @@ local function runFarmRoutine(my, role)
     if S.farmRunning then return end
     S.farmRunning = true
 
-    local waypoints = (role == "target") and CFG.FARM_TARGET_WAYPOINTS or CFG.FARM_HEALER_WAYPOINTS
-    teleportWaypoints(my, waypoints)
+    -- ✅ แยก speed target(85) / healer(40)
+    local isTarget = (role == "target")
+    local waypoints = isTarget and CFG.FARM_TARGET_WAYPOINTS or CFG.FARM_HEALER_WAYPOINTS
+    local tpSpeed   = isTarget and CFG.FARM_TP_SPEED_TARGET or CFG.FARM_TP_SPEED
+    teleportWaypoints(my, waypoints, tpSpeed)
     if not isAlive(my) then S.farmRunning = false; return end
 
     if role == "target" then
@@ -2807,8 +2813,9 @@ local function onCharacterAdded(char)
                 S.escapeAutoSwitch = autoSwitch or false
             elseif S.choice == "farm" then
                 local role = askFarmRole(my)
+                -- ✅ เก็บค่าเดิม / default target ถ้าตายตอนเลือกครั้งแรก
+                S.farmRole = role or S.farmRole or "target"
                 if not isAlive(my) then return end
-                S.farmRole = role or "healer"
             end
             if S.choice == "mop" or S.choice == "escape" then
                 startInfoOverlay()
@@ -2826,10 +2833,17 @@ local function onCharacterAdded(char)
         elseif S.choice == "help" then
             runHelpRoutine(my)
         elseif S.choice == "farm" then
+            -- ✅ ถ้า S.farmRole ยังเป็น nil (ตายตอนเปิด GUI เลือกครั้งแรก) → ถามใหม่
+            --    กันบั๊กวาปผิดเส้น (target กลายเป็น healer)
+            if not S.farmRole then
+                local role = askFarmRole(my)
+                if not isAlive(my) then return end
+                S.farmRole = role or "target"  -- default = target
+            end
             S.farmRunning = false
             S.farmToolIndex = 1
             task.wait(0.3)
-            if isAlive(my) then
+            if isAlive(my) and S.farmRole then
                 task.spawn(function() runFarmRoutine(my, S.farmRole) end)
             end
         end
